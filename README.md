@@ -6,6 +6,23 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
 
 ---
 
+## Desktop Installers & Releases
+
+Download the official desktop application with offline SQLite database, receipt archive management, and automatic image compression:
+
+[![Latest Release](https://img.shields.io/github/v/release/ZengLLQ/tutor-payment-records?color=3B3BE6&label=Latest%20Release)](https://github.com/ZengLLQ/tutor-payment-records/releases/latest)
+
+| Platform | Format | Download Link | Architecture |
+|---|---|---|---|
+| **macOS** | `.dmg` | [Tutor.Payment.Records_0.1.0_universal.dmg](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Tutor.Payment.Records_universal.app.tar.gz](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Tutor.Payment.Records_0.1.0_x64-setup.exe](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Tutor.Payment.Records_0.1.0_x64_en-US.msi](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_x64_en-US.msi) | Windows MSI Package |
+
+All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
+
+---
+
 ## Documentation
 
 - **[Technical Architecture & Specification](docs/ARCHITECTURE.md)**: Deep dive into the dual-target system topology, IPC bridge, SQLite/IndexedDB persistence, automatic image optimization pipeline, and security model.
