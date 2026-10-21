@@ -155,6 +155,7 @@ pub fn create_payment_record(
         receipt_width: width,
         receipt_height: height,
         note: payload.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()),
+        status: Some(payload.status.unwrap_or_else(|| "PAID".to_string())),
         created_at: now.clone(),
         updated_at: now,
     };
@@ -277,6 +278,7 @@ pub fn update_payment_record(
         receipt_width: width,
         receipt_height: height,
         note: payload.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()),
+        status: payload.status.or(existing.status).or_else(|| Some("PAID".to_string())),
         created_at: existing.created_at,
         updated_at: now,
     };
@@ -284,6 +286,27 @@ pub fn update_payment_record(
     db::update_record(&conn, &updated).map_err(|e| e.to_string())?;
 
     Ok(updated)
+}
+
+#[tauri::command]
+pub fn toggle_payment_status(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<PaymentRecord, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut record = db::get_record_by_id(&conn, &id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Payment record not found".to_string())?;
+
+    let next_status = match record.status.as_deref() {
+        Some("UNPAID") => "PAID",
+        _ => "UNPAID",
+    };
+    record.status = Some(next_status.to_string());
+    record.updated_at = Utc::now().to_rfc3339();
+
+    db::update_record(&conn, &record).map_err(|e| e.to_string())?;
+    Ok(record)
 }
 
 #[tauri::command]

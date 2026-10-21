@@ -17,7 +17,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     filter.search?.trim() ||
     filter.month?.trim() ||
     filter.from_date?.trim() ||
-    filter.to_date?.trim()
+    filter.to_date?.trim() ||
+    filter.status
   );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,6 +98,25 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 ))}
               </select>
               <Calendar className="w-3.5 h-3.5 text-heron-tertiary absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative min-w-[120px]">
+              <select
+                value={filter.status || ''}
+                onChange={(e) =>
+                  onChange({
+                    ...filter,
+                    status: (e.target.value as 'PAID' | 'UNPAID') || undefined,
+                  })
+                }
+                aria-label="Filter by status"
+                className="w-full bg-heron-surface border border-heron-border text-heron-primary px-3 py-2 text-xs font-sans tracking-wide focus:border-heron-brand focus:outline-none appearance-none cursor-pointer pr-7 transition-colors"
+              >
+                <option value="">All Status</option>
+                <option value="PAID">PAID</option>
+                <option value="UNPAID">UNPAID</option>
+              </select>
             </div>
 
             {/* Custom Date Range */}

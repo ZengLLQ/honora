@@ -12,6 +12,7 @@ interface RecordListProps {
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
   onClearFilter: () => void;
+  onToggleStatus?: (record: PaymentRecord) => void;
 }
 
 export const RecordList: React.FC<RecordListProps> = ({
@@ -23,6 +24,7 @@ export const RecordList: React.FC<RecordListProps> = ({
   onEdit,
   onDelete,
   onClearFilter,
+  onToggleStatus,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -135,6 +137,7 @@ export const RecordList: React.FC<RecordListProps> = ({
             onViewReceipt={onViewReceipt}
             onEdit={onEdit}
             onDelete={onDelete}
+            onToggleStatus={onToggleStatus}
           />
         ))}
       </div>

@@ -10,6 +10,7 @@ interface RecordItemProps {
   onViewReceipt: (record: PaymentRecord) => void;
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
+  onToggleStatus?: (record: PaymentRecord) => void;
 }
 
 export const RecordItem: React.FC<RecordItemProps> = ({
@@ -19,8 +20,10 @@ export const RecordItem: React.FC<RecordItemProps> = ({
   onViewReceipt,
   onEdit,
   onDelete,
+  onToggleStatus,
 }) => {
   const hasReceipt = Boolean(record.receipt_storage_path);
+  const status = record.status ?? 'PAID';
 
   return (
     <div
@@ -42,9 +45,33 @@ export const RecordItem: React.FC<RecordItemProps> = ({
                   : 'bg-heron-border group-hover:bg-heron-brand'
               }`}
             />
-            <div className="min-w-0">
-              <div className="text-[11px] font-sans font-medium tracking-wider uppercase text-heron-tertiary mb-0.5">
-                {formatDateDisplay(record.payment_date)}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-[11px] font-sans font-medium tracking-wider uppercase text-heron-tertiary">
+                  {formatDateDisplay(record.payment_date)}
+                </span>
+                {/* Status Toggle Badge */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleStatus?.(record);
+                  }}
+                  title={`Status: ${status}. Click to change to ${status === 'PAID' ? 'UNPAID' : 'PAID'}`}
+                  aria-label={`Status: ${status}. Click to change to ${status === 'PAID' ? 'UNPAID' : 'PAID'}`}
+                  className={`btn-heron inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-sans font-semibold tracking-wider uppercase border transition-all cursor-pointer select-none ${
+                    status === 'PAID'
+                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
+                      : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      status === 'PAID' ? 'bg-emerald-600' : 'bg-amber-600'
+                    }`}
+                  />
+                  <span>{status}</span>
+                </button>
               </div>
               <h3 className="font-display font-bold text-base sm:text-lg text-heron-primary tracking-tight transition-colors group-hover:text-heron-primary">
                 {record.student_name}

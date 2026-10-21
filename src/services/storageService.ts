@@ -16,6 +16,7 @@ export interface IPaymentService {
   createRecord(payload: CreateRecordPayload): Promise<PaymentRecord>;
   updateRecord(payload: UpdateRecordPayload): Promise<PaymentRecord>;
   deleteRecord(id: string): Promise<void>;
+  togglePaymentStatus(id: string): Promise<PaymentRecord>;
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
   close?(): Promise<void>;
@@ -58,6 +59,10 @@ class TauriPaymentService implements IPaymentService {
 
   async deleteRecord(id: string): Promise<void> {
     return this.invoke<void>('delete_payment_record', { id });
+  }
+
+  async togglePaymentStatus(id: string): Promise<PaymentRecord> {
+    return this.invoke<PaymentRecord>('toggle_payment_status', { id });
   }
 
   async optimizeReceipt(file: File): Promise<OptimizationResult> {
@@ -147,6 +152,10 @@ class WebIndexedDBPaymentService implements IPaymentService {
       if (to) {
         result = result.filter((r) => r.payment_date <= to);
       }
+    }
+
+    if (filter?.status) {
+      result = result.filter((r) => (r.status ?? 'PAID') === filter.status);
     }
 
     // Sort: newest payment_date first, then newest created_at
@@ -255,6 +264,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
       receipt_width: payload.receipt_width || null,
       receipt_height: payload.receipt_height || null,
       note: payload.note?.trim() || null,
+      status: payload.status || 'PAID',
       created_at: now,
       updated_at: now,
     };
@@ -345,6 +355,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
       receipt_width: width,
       receipt_height: height,
       note: payload.note?.trim() || null,
+      status: payload.status ?? existing.status ?? 'PAID',
       created_at: existing.created_at,
       updated_at: now,
     };
@@ -381,6 +392,20 @@ class WebIndexedDBPaymentService implements IPaymentService {
 
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
+    });
+  }
+
+  async togglePaymentStatus(id: string): Promise<PaymentRecord> {
+    const existing = await this.getRecord(id);
+    if (!existing) throw new Error('Payment record not found.');
+    const nextStatus: 'PAID' | 'UNPAID' = (existing.status ?? 'PAID') === 'PAID' ? 'UNPAID' : 'PAID';
+    return this.updateRecord({
+      id: existing.id,
+      student_name: existing.student_name,
+      payment_date: existing.payment_date,
+      amount_idr: existing.amount_idr,
+      note: existing.note ?? undefined,
+      status: nextStatus,
     });
   }
 

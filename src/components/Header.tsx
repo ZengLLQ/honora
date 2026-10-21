@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { BrandLogo } from './BrandLogo';
 
 interface HeaderProps {
   isTauri?: boolean;
@@ -12,12 +13,7 @@ export const Header: React.FC<HeaderProps> = ({ isTauri: _isTauri, onNewPayment 
       <div className="max-w-page mx-auto px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
         {/* Brand / Application Identifier */}
         <div className="flex items-center gap-3">
-          {/* Heron-inspired precision geometric badge */}
-          <div className="relative w-7 h-7 border border-heron-border bg-heron-surface flex items-center justify-center">
-            <div className="w-2 h-2 bg-heron-brand" />
-            <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-heron-primary" />
-            <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-heron-primary" />
-          </div>
+          <BrandLogo size="md" />
 
           <div className="font-display font-bold text-sm sm:text-base tracking-tight text-heron-primary flex items-center gap-1.5 uppercase leading-none">
             <span className="font-bold">TUTOR</span>

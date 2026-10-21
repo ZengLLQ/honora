@@ -144,4 +144,42 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     expect(updated.receipt_storage_path).toBeNull();
     expect(updated.receipt_mime_type).toBeNull();
   });
+
+  it('handles status creation, togglePaymentStatus, and filtering by status', async () => {
+    const service = getPaymentService();
+
+    // 1. Defaults to PAID
+    const rec1 = await service.createRecord({
+      student_name: 'Student One',
+      payment_date: '2026-10-20',
+      amount_idr: 500000,
+    });
+    expect(rec1.status).toBe('PAID');
+
+    // 2. Explicitly UNPAID
+    const rec2 = await service.createRecord({
+      student_name: 'Student Two',
+      payment_date: '2026-10-21',
+      amount_idr: 600000,
+      status: 'UNPAID',
+    });
+    expect(rec2.status).toBe('UNPAID');
+
+    // 3. Toggle rec1 (PAID -> UNPAID)
+    const toggled1 = await service.togglePaymentStatus(rec1.id);
+    expect(toggled1.status).toBe('UNPAID');
+
+    // Toggle back (UNPAID -> PAID)
+    const toggledAgain = await service.togglePaymentStatus(rec1.id);
+    expect(toggledAgain.status).toBe('PAID');
+
+    // 4. Filtering by status
+    const paidList = await service.getRecords({ status: 'PAID' });
+    expect(paidList.length).toBe(1);
+    expect(paidList[0].id).toBe(rec1.id);
+
+    const unpaidList = await service.getRecords({ status: 'UNPAID' });
+    expect(unpaidList.length).toBe(1);
+    expect(unpaidList[0].id).toBe(rec2.id);
+  });
 });

@@ -16,6 +16,7 @@ pub fn init_db(conn: &Connection) -> Result<()> {
             receipt_width INTEGER,
             receipt_height INTEGER,
             note TEXT,
+            status TEXT NOT NULL DEFAULT 'PAID',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -24,19 +25,42 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_payment_records_date ON payment_records(payment_date);
         ",
     )?;
+
+    // Migration for existing tables: check if status column exists, if not add it
+    let has_status: bool = {
+        let mut stmt = conn.prepare("PRAGMA table_info(payment_records)")?;
+        let col_names = stmt.query_map([], |row| row.get::<_, String>(1))?;
+        let mut found = false;
+        for name in col_names {
+            if name? == "status" {
+                found = true;
+                break;
+            }
+        }
+        found
+    };
+
+    if !has_status {
+        conn.execute(
+            "ALTER TABLE payment_records ADD COLUMN status TEXT NOT NULL DEFAULT 'PAID'",
+            [],
+        )?;
+    }
+
     Ok(())
 }
 
 pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    let status_val = record.status.as_deref().unwrap_or("PAID");
     conn.execute(
         "
         INSERT INTO payment_records (
             id, student_name, payment_date, amount_idr,
             receipt_storage_path, receipt_mime_type,
             receipt_original_size_bytes, receipt_compressed_size_bytes,
-            receipt_width, receipt_height, note, created_at, updated_at
+            receipt_width, receipt_height, note, status, created_at, updated_at
         ) VALUES (
-            ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13
+            ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14
         )
         ",
         params![
@@ -51,6 +75,7 @@ pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
             record.receipt_width,
             record.receipt_height,
             record.note,
+            status_val,
             record.created_at,
             record.updated_at,
         ],
@@ -59,6 +84,7 @@ pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
 }
 
 pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    let status_val = record.status.as_deref().unwrap_or("PAID");
     conn.execute(
         "
         UPDATE payment_records SET
@@ -72,8 +98,9 @@ pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
             receipt_width = ?8,
             receipt_height = ?9,
             note = ?10,
-            updated_at = ?11
-        WHERE id = ?12
+            status = ?11,
+            updated_at = ?12
+        WHERE id = ?13
         ",
         params![
             record.student_name.trim(),
@@ -86,6 +113,7 @@ pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
             record.receipt_width,
             record.receipt_height,
             record.note,
+            status_val,
             record.updated_at,
             record.id,
         ],
@@ -100,7 +128,7 @@ pub fn get_record_by_id(conn: &Connection, id: &str) -> Result<Option<PaymentRec
             id, student_name, payment_date, amount_idr,
             receipt_storage_path, receipt_mime_type,
             receipt_original_size_bytes, receipt_compressed_size_bytes,
-            receipt_width, receipt_height, note, created_at, updated_at
+            receipt_width, receipt_height, note, status, created_at, updated_at
         FROM payment_records
         WHERE id = ?1
         ",
@@ -120,8 +148,9 @@ pub fn get_record_by_id(conn: &Connection, id: &str) -> Result<Option<PaymentRec
                 receipt_width: row.get(8)?,
                 receipt_height: row.get(9)?,
                 note: row.get(10)?,
-                created_at: row.get(11)?,
-                updated_at: row.get(12)?,
+                status: row.get(11)?,
+                created_at: row.get(12)?,
+                updated_at: row.get(13)?,
             })
         })
         .optional()?;
@@ -141,7 +170,7 @@ pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<Payme
             id, student_name, payment_date, amount_idr,
             receipt_storage_path, receipt_mime_type,
             receipt_original_size_bytes, receipt_compressed_size_bytes,
-            receipt_width, receipt_height, note, created_at, updated_at
+            receipt_width, receipt_height, note, status, created_at, updated_at
         FROM payment_records
         WHERE 1=1
         ",
@@ -181,6 +210,14 @@ pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<Payme
         }
     }
 
+    if let Some(ref status) = filter.status {
+        let trimmed = status.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND status = ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
     query.push_str(" ORDER BY payment_date DESC, created_at DESC");
 
     let mut stmt = conn.prepare(&query)?;
@@ -199,8 +236,9 @@ pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<Payme
             receipt_width: row.get(8)?,
             receipt_height: row.get(9)?,
             note: row.get(10)?,
-            created_at: row.get(11)?,
-            updated_at: row.get(12)?,
+            status: row.get(11)?,
+            created_at: row.get(12)?,
+            updated_at: row.get(13)?,
         })
     })?;
 
@@ -255,6 +293,14 @@ pub fn get_summary(conn: &Connection, filter: &RecordFilter) -> Result<PaymentSu
         }
     }
 
+    if let Some(ref status) = filter.status {
+        let trimmed = status.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND status = ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
     let mut stmt = conn.prepare(&query)?;
     let param_refs: Vec<&dyn rusqlite::ToSql> = sql_params.iter().map(|b| b.as_ref()).collect();
 
@@ -297,6 +343,7 @@ mod tests {
             receipt_width: Some(1200),
             receipt_height: Some(1600),
             note: Some("Math tutoring".to_string()),
+            status: Some("PAID".to_string()),
             created_at: "2026-10-15T10:00:00Z".to_string(),
             updated_at: "2026-10-15T10:00:00Z".to_string(),
         };
@@ -306,6 +353,7 @@ mod tests {
         let fetched = get_record_by_id(&conn, "rec-1").unwrap().unwrap();
         assert_eq!(fetched.student_name, "Budi Santoso");
         assert_eq!(fetched.amount_idr, 1_250_000);
+        assert_eq!(fetched.status.as_deref(), Some("PAID"));
 
         // Add second record in different month
         let record2 = PaymentRecord {
@@ -320,6 +368,7 @@ mod tests {
             receipt_width: None,
             receipt_height: None,
             note: None,
+            status: Some("UNPAID".to_string()),
             created_at: "2026-09-20T08:00:00Z".to_string(),
             updated_at: "2026-09-20T08:00:00Z".to_string(),
         };
@@ -350,13 +399,16 @@ mod tests {
         let records = get_records(&conn, &filter_name).unwrap();
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].id, "rec-2");
+        assert_eq!(records[0].status.as_deref(), Some("UNPAID"));
 
         // Update record
         let mut updated_rec = record1.clone();
         updated_rec.amount_idr = 1_500_000;
+        updated_rec.status = Some("UNPAID".to_string());
         update_record(&conn, &updated_rec).unwrap();
         let fetched_updated = get_record_by_id(&conn, "rec-1").unwrap().unwrap();
         assert_eq!(fetched_updated.amount_idr, 1_500_000);
+        assert_eq!(fetched_updated.status.as_deref(), Some("UNPAID"));
 
         // Delete record
         delete_record(&conn, "rec-2").unwrap();
@@ -380,6 +432,7 @@ mod tests {
             receipt_width: None,
             receipt_height: None,
             note: None,
+            status: Some("PAID".to_string()),
             created_at: "2026-10-01T10:00:00Z".to_string(),
             updated_at: "2026-10-01T10:00:00Z".to_string(),
         };
@@ -396,6 +449,7 @@ mod tests {
             receipt_width: None,
             receipt_height: None,
             note: None,
+            status: Some("PAID".to_string()),
             created_at: "2026-10-15T10:00:00Z".to_string(),
             updated_at: "2026-10-15T10:00:00Z".to_string(),
         };
@@ -412,6 +466,7 @@ mod tests {
             receipt_width: None,
             receipt_height: None,
             note: None,
+            status: Some("UNPAID".to_string()),
             created_at: "2026-10-31T10:00:00Z".to_string(),
             updated_at: "2026-10-31T10:00:00Z".to_string(),
         };
@@ -442,5 +497,86 @@ mod tests {
         assert_eq!(sum_range.total_amount_idr, 2_500_000);
         assert_eq!(sum_range.filtered_amount_idr, 800_000);
         assert_eq!(sum_range.filtered_records, 1);
+    }
+
+    #[test]
+    fn test_status_filtering_and_migration() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        // Create legacy schema without status column
+        conn.execute_batch(
+            "
+            CREATE TABLE payment_records (
+                id TEXT PRIMARY KEY,
+                student_name TEXT NOT NULL,
+                payment_date TEXT NOT NULL,
+                amount_idr INTEGER NOT NULL,
+                receipt_storage_path TEXT,
+                receipt_mime_type TEXT,
+                receipt_original_size_bytes INTEGER,
+                receipt_compressed_size_bytes INTEGER,
+                receipt_width INTEGER,
+                receipt_height INTEGER,
+                note TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            INSERT INTO payment_records VALUES (
+                'legacy-1', 'Legacy Student', '2026-10-10', 500000,
+                NULL, NULL, NULL, NULL, NULL, NULL, 'Legacy note',
+                '2026-10-10T10:00:00Z', '2026-10-10T10:00:00Z'
+            );
+            ",
+        )
+        .unwrap();
+
+        // Run init_db which should idempotently migrate table and add status column defaulting to 'PAID'
+        init_db(&conn).unwrap();
+
+        let legacy_rec = get_record_by_id(&conn, "legacy-1").unwrap().unwrap();
+        assert_eq!(legacy_rec.status.as_deref(), Some("PAID"));
+
+        // Insert UNPAID record
+        let unpaid = PaymentRecord {
+            id: "rec-unpaid".to_string(),
+            student_name: "Unpaid Student".to_string(),
+            payment_date: "2026-10-11".to_string(),
+            amount_idr: 600_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("UNPAID".to_string()),
+            created_at: "2026-10-11T10:00:00Z".to_string(),
+            updated_at: "2026-10-11T10:00:00Z".to_string(),
+        };
+        create_record(&conn, &unpaid).unwrap();
+
+        // Filter by PAID
+        let filter_paid = RecordFilter {
+            status: Some("PAID".to_string()),
+            ..Default::default()
+        };
+        let paid_records = get_records(&conn, &filter_paid).unwrap();
+        assert_eq!(paid_records.len(), 1);
+        assert_eq!(paid_records[0].id, "legacy-1");
+
+        // Filter by UNPAID
+        let filter_unpaid = RecordFilter {
+            status: Some("UNPAID".to_string()),
+            ..Default::default()
+        };
+        let unpaid_records = get_records(&conn, &filter_unpaid).unwrap();
+        assert_eq!(unpaid_records.len(), 1);
+        assert_eq!(unpaid_records[0].id, "rec-unpaid");
+
+        let sum_unpaid = get_summary(&conn, &filter_unpaid).unwrap();
+        assert_eq!(sum_unpaid.filtered_amount_idr, 600_000);
+        assert_eq!(sum_unpaid.filtered_records, 1);
+        assert_eq!(sum_unpaid.total_amount_idr, 1_100_000);
+        assert_eq!(sum_unpaid.total_records, 2);
     }
 }

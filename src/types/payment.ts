@@ -10,6 +10,7 @@ export interface PaymentRecord {
   receipt_width?: number | null;
   receipt_height?: number | null;
   note?: string | null;
+  status?: 'PAID' | 'UNPAID';
   created_at: string;
   updated_at: string;
 }
@@ -19,6 +20,7 @@ export interface RecordFilter {
   month?: string; // YYYY-MM
   from_date?: string; // YYYY-MM-DD
   to_date?: string; // YYYY-MM-DD
+  status?: 'PAID' | 'UNPAID';
 }
 
 export interface PaymentSummary {
@@ -43,6 +45,7 @@ export interface CreateRecordPayload {
   payment_date: string;
   amount_idr: number;
   note?: string | null;
+  status?: 'PAID' | 'UNPAID';
   receipt_base64?: string | null;
   receipt_mime_type?: string | null;
   receipt_original_size_bytes?: number | null;
@@ -57,6 +60,7 @@ export interface UpdateRecordPayload {
   payment_date: string;
   amount_idr: number;
   note?: string | null;
+  status?: 'PAID' | 'UNPAID';
   receipt_base64?: string | null;
   receipt_mime_type?: string | null;
   receipt_original_size_bytes?: number | null;

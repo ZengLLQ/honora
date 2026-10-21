@@ -31,6 +31,7 @@ describe('UI Components', () => {
     receipt_width: 1440,
     receipt_height: 2560,
     note: 'Math tutoring 8 sessions',
+    status: 'PAID',
     created_at: '2026-10-21T10:00:00Z',
     updated_at: '2026-10-21T10:00:00Z',
   };
@@ -47,8 +48,26 @@ describe('UI Components', () => {
     receipt_width: null,
     receipt_height: null,
     note: null,
+    status: 'PAID',
     created_at: '2026-10-15T10:00:00Z',
     updated_at: '2026-10-15T10:00:00Z',
+  };
+
+  const dummyRecordUnpaid: PaymentRecord = {
+    id: 'rec-3',
+    student_name: 'Dimas Anggara',
+    payment_date: '2026-10-18',
+    amount_idr: 750000,
+    receipt_storage_path: null,
+    receipt_mime_type: null,
+    receipt_original_size_bytes: null,
+    receipt_compressed_size_bytes: null,
+    receipt_width: null,
+    receipt_height: null,
+    note: 'Pending transfer confirmation',
+    status: 'UNPAID',
+    created_at: '2026-10-18T10:00:00Z',
+    updated_at: '2026-10-18T10:00:00Z',
   };
 
   describe('FinancialSummary', () => {
@@ -122,6 +141,21 @@ describe('UI Components', () => {
       fireEvent.click(resetBtn);
       expect(onChange).toHaveBeenCalledWith({});
     });
+
+    it('triggers status filter change callback', () => {
+      const onChange = vi.fn();
+      render(
+        <FilterBar
+          filter={{}}
+          onChange={onChange}
+          availableMonths={[]}
+        />
+      );
+
+      const statusSelect = screen.getByLabelText('Filter by status');
+      fireEvent.change(statusSelect, { target: { value: 'UNPAID' } });
+      expect(onChange).toHaveBeenCalledWith({ status: 'UNPAID' });
+    });
   });
 
   describe('RecordItem', () => {
@@ -182,6 +216,46 @@ describe('UI Components', () => {
       expect(screen.getByText('Siti Rahma')).toBeInTheDocument();
       expect(screen.getByText('Rp 1.000.000')).toBeInTheDocument();
       expect(screen.getByText('NO RECEIPT')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Status: PAID/i })).toBeInTheDocument();
+    });
+
+    it('renders clickable status toggle badge and triggers onToggleStatus callback', () => {
+      const onToggleStatus = vi.fn();
+      const { rerender } = render(
+        <RecordItem
+          record={dummyRecordWithReceipt}
+          onViewReceipt={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleStatus={onToggleStatus}
+        />
+      );
+
+      const paidBadge = screen.getByRole('button', { name: /Status: PAID/i });
+      expect(paidBadge).toBeInTheDocument();
+      expect(paidBadge).toHaveTextContent('PAID');
+
+      // Click to toggle
+      fireEvent.click(paidBadge);
+      expect(onToggleStatus).toHaveBeenCalledWith(dummyRecordWithReceipt);
+
+      // Rerender with UNPAID record
+      rerender(
+        <RecordItem
+          record={dummyRecordUnpaid}
+          onViewReceipt={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleStatus={onToggleStatus}
+        />
+      );
+
+      const unpaidBadge = screen.getByRole('button', { name: /Status: UNPAID/i });
+      expect(unpaidBadge).toBeInTheDocument();
+      expect(unpaidBadge).toHaveTextContent('UNPAID');
+
+      fireEvent.click(unpaidBadge);
+      expect(onToggleStatus).toHaveBeenCalledWith(dummyRecordUnpaid);
     });
   });
 
@@ -259,6 +333,7 @@ describe('UI Components', () => {
       expect(screen.getByText('TUTOR')).toBeInTheDocument();
       expect(screen.getByText('PAYMENT')).toBeInTheDocument();
       expect(screen.getByText('RECORDS')).toBeInTheDocument();
+      expect(screen.getByTestId('brand-logo')).toBeInTheDocument();
       expect(screen.queryByText('Financial Receipt Ledger')).not.toBeInTheDocument();
 
       // Minimal Information Policy: No Tauri, Wasm, or IndexedDB leaked
@@ -327,6 +402,31 @@ describe('UI Components', () => {
       fireEvent.click(removeBtn);
       expect(screen.getByText(/Drop receipt image here/i)).toBeInTheDocument();
     });
+
+    it('allows selecting and toggling between PAID and UNPAID status', () => {
+      render(
+        <PaymentModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onSaved={vi.fn()}
+          recordToEdit={dummyRecordUnpaid}
+        />
+      );
+
+      const paidBtn = screen.getByRole('button', { name: 'Status PAID' });
+      const unpaidBtn = screen.getByRole('button', { name: 'Status UNPAID' });
+      expect(paidBtn).toBeInTheDocument();
+      expect(unpaidBtn).toBeInTheDocument();
+
+      // Since dummyRecordUnpaid has status UNPAID:
+      expect(unpaidBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(paidBtn).toHaveAttribute('aria-pressed', 'false');
+
+      // Click PAID to toggle
+      fireEvent.click(paidBtn);
+      expect(paidBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(unpaidBtn).toHaveAttribute('aria-pressed', 'false');
+    });
   });
 
   describe('ReceiptViewerModal', () => {
@@ -344,6 +444,7 @@ describe('UI Components', () => {
       expect(screen.getByText('STUDENT NAME')).toBeInTheDocument();
       expect(screen.getByText('AMOUNT')).toBeInTheDocument();
       expect(screen.getByText('DATE')).toBeInTheDocument();
+      expect(screen.getByText('PAYMENT STATUS')).toBeInTheDocument();
       expect(screen.getByText('NOTE')).toBeInTheDocument();
       expect(screen.getByText('RECEIPT DETAILS')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument();
@@ -354,6 +455,27 @@ describe('UI Components', () => {
       expect(screen.queryByText(/image\/jpeg/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/image\/webp/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Format:/i)).not.toBeInTheDocument();
+    });
+
+    it('triggers onToggleStatus callback from receipt details panel', () => {
+      const onToggleStatus = vi.fn();
+      render(
+        <ReceiptViewerModal
+          isOpen={true}
+          record={dummyRecordWithReceipt}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleStatus={onToggleStatus}
+        />
+      );
+
+      const statusToggleBtn = screen.getByRole('button', { name: /Toggle payment status/i });
+      expect(statusToggleBtn).toBeInTheDocument();
+      expect(statusToggleBtn).toHaveTextContent('PAID');
+
+      fireEvent.click(statusToggleBtn);
+      expect(onToggleStatus).toHaveBeenCalledWith(dummyRecordWithReceipt);
     });
 
     it('handles zoom in, zoom out, and reset zoom controls', () => {
@@ -399,6 +521,10 @@ describe('UI Components', () => {
     it('renders clean focused payment records header without descriptive filler copy', async () => {
       render(<App />);
       expect(screen.getByRole('heading', { level: 1, name: /PAYMENT RECORDS/i })).toBeInTheDocument();
+      // Ensure BrandLogo is rendered both in header and hero section
+      const brandLogos = screen.getAllByTestId('brand-logo');
+      expect(brandLogos.length).toBeGreaterThanOrEqual(2);
+
       expect(screen.queryByText('PAYMENT LEDGER')).not.toBeInTheDocument();
       expect(screen.queryByText('FINANCIAL OVERVIEW & AUDIT')).not.toBeInTheDocument();
       expect(screen.queryByText('Financial Receipt Ledger')).not.toBeInTheDocument();

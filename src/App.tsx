@@ -10,6 +10,7 @@ import { RecordList } from './components/RecordList';
 import { PaymentModal } from './components/PaymentModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { BrandLogo } from './components/BrandLogo';
 
 export function App() {
   const service = useMemo(() => getPaymentService(), []);
@@ -88,6 +89,15 @@ export function App() {
     await refreshData();
   };
 
+  const handleToggleStatus = async (rec: PaymentRecord) => {
+    try {
+      const updated = await service.togglePaymentStatus(rec.id);
+      setViewerRecord((prev) => (prev && prev.id === rec.id ? updated : prev));
+      refreshData();
+    } catch (err) {
+      console.error('Failed to toggle payment status:', err);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-heron-bg text-heron-primary selection:bg-heron-brand selection:text-white font-sans">
@@ -105,9 +115,12 @@ export function App() {
                   FINANCIAL LEDGER
                 </span>
               </div>
-              <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
-                PAYMENT RECORDS
-              </h1>
+              <div className="flex items-center gap-3.5 sm:gap-4.5">
+                <BrandLogo size="hero" />
+                <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
+                  PAYMENT RECORDS.
+                </h1>
+              </div>
               <p className="mt-2 text-xs sm:text-sm text-heron-secondary max-w-xl font-sans">
                 Personal bank transfer ledger and receipt archive.
               </p>
@@ -146,6 +159,7 @@ export function App() {
           onEdit={handleOpenEdit}
           onDelete={handleOpenDelete}
           onClearFilter={() => setFilter({})}
+          onToggleStatus={handleToggleStatus}
         />
       </main>
 
@@ -182,6 +196,7 @@ export function App() {
         onClose={() => setViewerRecord(null)}
         onEdit={handleOpenEdit}
         onDelete={handleOpenDelete}
+        onToggleStatus={handleToggleStatus}
       />
 
       <DeleteConfirmModal

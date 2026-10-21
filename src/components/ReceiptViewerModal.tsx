@@ -18,6 +18,7 @@ interface ReceiptViewerModalProps {
   onClose: () => void;
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
+  onToggleStatus?: (record: PaymentRecord) => void;
 }
 
 export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
@@ -26,6 +27,7 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onToggleStatus,
 }) => {
   const [dataUrl, setDataUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -205,6 +207,34 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
                 <span className="text-sm font-sans font-semibold text-heron-primary">
                   {formatDateDisplay(record.payment_date)}
                 </span>
+              </div>
+
+              {/* Payment Status with toggle capability */}
+              <div>
+                <span className="text-[10px] font-sans font-medium tracking-wider text-heron-tertiary uppercase block mb-1">
+                  PAYMENT STATUS
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onToggleStatus?.(record)}
+                  title={`Status: ${record.status ?? 'PAID'}. Click to toggle.`}
+                  aria-label={`Toggle payment status for ${record.student_name}`}
+                  className={`btn-heron inline-flex items-center gap-2 px-3 py-1.5 text-xs font-sans font-semibold tracking-wider uppercase border transition-all cursor-pointer ${
+                    (record.status ?? 'PAID') === 'PAID'
+                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
+                      : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      (record.status ?? 'PAID') === 'PAID' ? 'bg-emerald-600' : 'bg-amber-600'
+                    }`}
+                  />
+                  <span>{record.status ?? 'PAID'}</span>
+                  <span className="text-[10px] text-heron-tertiary font-normal lowercase">
+                    (click to toggle)
+                  </span>
+                </button>
               </div>
 
               {/* Note */}

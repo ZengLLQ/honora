@@ -33,6 +33,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     recordToEdit?.amount_idr ? recordToEdit.amount_idr.toLocaleString('id-ID') : ''
   );
   const [note, setNote] = useState(recordToEdit?.note || '');
+  const [status, setStatus] = useState<'PAID' | 'UNPAID'>(recordToEdit?.status ?? 'PAID');
 
   // Receipt optimization states
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -154,6 +155,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           payment_date: paymentDate,
           amount_idr: currentAmount,
           note: note.trim() || undefined,
+          status,
           remove_receipt: removeExistingReceipt,
         };
 
@@ -173,6 +175,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           payment_date: paymentDate,
           amount_idr: currentAmount,
           note: note.trim() || undefined,
+          status,
         };
 
         if (optimizationResult) {
@@ -281,6 +284,43 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   className="w-full bg-heron-surface border border-heron-border pl-10 pr-3.5 py-2.5 text-sm font-sans font-bold font-mono-num text-heron-primary focus:border-heron-brand focus:outline-none transition-colors"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Payment Status Selection */}
+          <div>
+            <label className="block text-xs font-sans tracking-wider uppercase text-heron-primary mb-1.5 font-medium">
+              Payment Status <span className="text-heron-brand">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setStatus('PAID')}
+                aria-pressed={status === 'PAID'}
+                aria-label="Status PAID"
+                className={`py-2 px-3 text-xs font-sans font-semibold tracking-wider uppercase border transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  status === 'PAID'
+                    ? 'border-emerald-600 bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-600/30'
+                    : 'border-heron-border bg-heron-surface text-heron-tertiary hover:border-heron-primary hover:text-heron-primary'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${status === 'PAID' ? 'bg-emerald-600' : 'bg-heron-border'}`} />
+                <span>PAID</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('UNPAID')}
+                aria-pressed={status === 'UNPAID'}
+                aria-label="Status UNPAID"
+                className={`py-2 px-3 text-xs font-sans font-semibold tracking-wider uppercase border transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  status === 'UNPAID'
+                    ? 'border-amber-600 bg-amber-500/10 text-amber-800 ring-1 ring-amber-600/30'
+                    : 'border-heron-border bg-heron-surface text-heron-tertiary hover:border-heron-primary hover:text-heron-primary'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${status === 'UNPAID' ? 'bg-amber-600' : 'bg-heron-border'}`} />
+                <span>UNPAID</span>
+              </button>
             </div>
           </div>
 
