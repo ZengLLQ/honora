@@ -1,0 +1,446 @@
+use crate::models::{PaymentRecord, PaymentSummary, RecordFilter};
+use rusqlite::{params, Connection, OptionalExtension, Result};
+
+pub fn init_db(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS payment_records (
+            id TEXT PRIMARY KEY,
+            student_name TEXT NOT NULL,
+            payment_date TEXT NOT NULL,
+            amount_idr INTEGER NOT NULL,
+            receipt_storage_path TEXT,
+            receipt_mime_type TEXT,
+            receipt_original_size_bytes INTEGER,
+            receipt_compressed_size_bytes INTEGER,
+            receipt_width INTEGER,
+            receipt_height INTEGER,
+            note TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_payment_records_student ON payment_records(student_name);
+        CREATE INDEX IF NOT EXISTS idx_payment_records_date ON payment_records(payment_date);
+        ",
+    )?;
+    Ok(())
+}
+
+pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    conn.execute(
+        "
+        INSERT INTO payment_records (
+            id, student_name, payment_date, amount_idr,
+            receipt_storage_path, receipt_mime_type,
+            receipt_original_size_bytes, receipt_compressed_size_bytes,
+            receipt_width, receipt_height, note, created_at, updated_at
+        ) VALUES (
+            ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13
+        )
+        ",
+        params![
+            record.id,
+            record.student_name.trim(),
+            record.payment_date,
+            record.amount_idr,
+            record.receipt_storage_path,
+            record.receipt_mime_type,
+            record.receipt_original_size_bytes,
+            record.receipt_compressed_size_bytes,
+            record.receipt_width,
+            record.receipt_height,
+            record.note,
+            record.created_at,
+            record.updated_at,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    conn.execute(
+        "
+        UPDATE payment_records SET
+            student_name = ?1,
+            payment_date = ?2,
+            amount_idr = ?3,
+            receipt_storage_path = ?4,
+            receipt_mime_type = ?5,
+            receipt_original_size_bytes = ?6,
+            receipt_compressed_size_bytes = ?7,
+            receipt_width = ?8,
+            receipt_height = ?9,
+            note = ?10,
+            updated_at = ?11
+        WHERE id = ?12
+        ",
+        params![
+            record.student_name.trim(),
+            record.payment_date,
+            record.amount_idr,
+            record.receipt_storage_path,
+            record.receipt_mime_type,
+            record.receipt_original_size_bytes,
+            record.receipt_compressed_size_bytes,
+            record.receipt_width,
+            record.receipt_height,
+            record.note,
+            record.updated_at,
+            record.id,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn get_record_by_id(conn: &Connection, id: &str) -> Result<Option<PaymentRecord>> {
+    let mut stmt = conn.prepare(
+        "
+        SELECT
+            id, student_name, payment_date, amount_idr,
+            receipt_storage_path, receipt_mime_type,
+            receipt_original_size_bytes, receipt_compressed_size_bytes,
+            receipt_width, receipt_height, note, created_at, updated_at
+        FROM payment_records
+        WHERE id = ?1
+        ",
+    )?;
+
+    let record = stmt
+        .query_row(params![id], |row| {
+            Ok(PaymentRecord {
+                id: row.get(0)?,
+                student_name: row.get(1)?,
+                payment_date: row.get(2)?,
+                amount_idr: row.get(3)?,
+                receipt_storage_path: row.get(4)?,
+                receipt_mime_type: row.get(5)?,
+                receipt_original_size_bytes: row.get(6)?,
+                receipt_compressed_size_bytes: row.get(7)?,
+                receipt_width: row.get(8)?,
+                receipt_height: row.get(9)?,
+                note: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
+            })
+        })
+        .optional()?;
+
+    Ok(record)
+}
+
+pub fn delete_record(conn: &Connection, id: &str) -> Result<()> {
+    conn.execute("DELETE FROM payment_records WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
+pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<PaymentRecord>> {
+    let mut query = String::from(
+        "
+        SELECT
+            id, student_name, payment_date, amount_idr,
+            receipt_storage_path, receipt_mime_type,
+            receipt_original_size_bytes, receipt_compressed_size_bytes,
+            receipt_width, receipt_height, note, created_at, updated_at
+        FROM payment_records
+        WHERE 1=1
+        ",
+    );
+
+    let mut sql_params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(ref search) = filter.search {
+        let trimmed = search.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND student_name LIKE ?");
+            sql_params.push(Box::new(format!("%{}%", trimmed)));
+        }
+    }
+
+    if let Some(ref month) = filter.month {
+        let trimmed = month.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date LIKE ?");
+            sql_params.push(Box::new(format!("{}%", trimmed)));
+        }
+    }
+
+    if let Some(ref from_date) = filter.from_date {
+        let trimmed = from_date.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date >= ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
+    if let Some(ref to_date) = filter.to_date {
+        let trimmed = to_date.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date <= ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
+    query.push_str(" ORDER BY payment_date DESC, created_at DESC");
+
+    let mut stmt = conn.prepare(&query)?;
+    let param_refs: Vec<&dyn rusqlite::ToSql> = sql_params.iter().map(|b| b.as_ref()).collect();
+
+    let rows = stmt.query_map(param_refs.as_slice(), |row| {
+        Ok(PaymentRecord {
+            id: row.get(0)?,
+            student_name: row.get(1)?,
+            payment_date: row.get(2)?,
+            amount_idr: row.get(3)?,
+            receipt_storage_path: row.get(4)?,
+            receipt_mime_type: row.get(5)?,
+            receipt_original_size_bytes: row.get(6)?,
+            receipt_compressed_size_bytes: row.get(7)?,
+            receipt_width: row.get(8)?,
+            receipt_height: row.get(9)?,
+            note: row.get(10)?,
+            created_at: row.get(11)?,
+            updated_at: row.get(12)?,
+        })
+    })?;
+
+    let mut list = Vec::new();
+    for item in rows {
+        list.push(item?);
+    }
+    Ok(list)
+}
+
+pub fn get_summary(conn: &Connection, filter: &RecordFilter) -> Result<PaymentSummary> {
+    // Total unfiltered
+    let (total_amount, total_count): (Option<i64>, usize) = conn.query_row(
+        "SELECT SUM(amount_idr), COUNT(*) FROM payment_records",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+
+    // Filtered
+    let mut query = String::from("SELECT SUM(amount_idr), COUNT(*) FROM payment_records WHERE 1=1");
+    let mut sql_params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+
+    if let Some(ref search) = filter.search {
+        let trimmed = search.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND student_name LIKE ?");
+            sql_params.push(Box::new(format!("%{}%", trimmed)));
+        }
+    }
+
+    if let Some(ref month) = filter.month {
+        let trimmed = month.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date LIKE ?");
+            sql_params.push(Box::new(format!("{}%", trimmed)));
+        }
+    }
+
+    if let Some(ref from_date) = filter.from_date {
+        let trimmed = from_date.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date >= ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
+    if let Some(ref to_date) = filter.to_date {
+        let trimmed = to_date.trim();
+        if !trimmed.is_empty() {
+            query.push_str(" AND payment_date <= ?");
+            sql_params.push(Box::new(trimmed.to_string()));
+        }
+    }
+
+    let mut stmt = conn.prepare(&query)?;
+    let param_refs: Vec<&dyn rusqlite::ToSql> = sql_params.iter().map(|b| b.as_ref()).collect();
+
+    let (filtered_amount, filtered_count): (Option<i64>, usize) =
+        stmt.query_row(param_refs.as_slice(), |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })?;
+
+    Ok(PaymentSummary {
+        total_amount_idr: total_amount.unwrap_or(0),
+        total_records: total_count,
+        filtered_amount_idr: filtered_amount.unwrap_or(0),
+        filtered_records: filtered_count,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_crud_and_summary() {
+        let conn = setup_test_db();
+
+        let record1 = PaymentRecord {
+            id: "rec-1".to_string(),
+            student_name: "Budi Santoso".to_string(),
+            payment_date: "2026-10-15".to_string(),
+            amount_idr: 1_250_000,
+            receipt_storage_path: Some("receipts/rec-1.jpg".to_string()),
+            receipt_mime_type: Some("image/jpeg".to_string()),
+            receipt_original_size_bytes: Some(1_500_000),
+            receipt_compressed_size_bytes: Some(400_000),
+            receipt_width: Some(1200),
+            receipt_height: Some(1600),
+            note: Some("Math tutoring".to_string()),
+            created_at: "2026-10-15T10:00:00Z".to_string(),
+            updated_at: "2026-10-15T10:00:00Z".to_string(),
+        };
+
+        create_record(&conn, &record1).unwrap();
+
+        let fetched = get_record_by_id(&conn, "rec-1").unwrap().unwrap();
+        assert_eq!(fetched.student_name, "Budi Santoso");
+        assert_eq!(fetched.amount_idr, 1_250_000);
+
+        // Add second record in different month
+        let record2 = PaymentRecord {
+            id: "rec-2".to_string(),
+            student_name: "Siti Rahma".to_string(),
+            payment_date: "2026-09-20".to_string(),
+            amount_idr: 750_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            created_at: "2026-09-20T08:00:00Z".to_string(),
+            updated_at: "2026-09-20T08:00:00Z".to_string(),
+        };
+        create_record(&conn, &record2).unwrap();
+
+        // Check total summary
+        let summary_all = get_summary(&conn, &RecordFilter::default()).unwrap();
+        assert_eq!(summary_all.total_amount_idr, 2_000_000);
+        assert_eq!(summary_all.total_records, 2);
+        assert_eq!(summary_all.filtered_amount_idr, 2_000_000);
+        assert_eq!(summary_all.filtered_records, 2);
+
+        // Filter by month
+        let filter_oct = RecordFilter {
+            month: Some("2026-10".to_string()),
+            ..Default::default()
+        };
+        let summary_oct = get_summary(&conn, &filter_oct).unwrap();
+        assert_eq!(summary_oct.total_amount_idr, 2_000_000);
+        assert_eq!(summary_oct.filtered_amount_idr, 1_250_000);
+        assert_eq!(summary_oct.filtered_records, 1);
+
+        // Filter by search name
+        let filter_name = RecordFilter {
+            search: Some("siti".to_string()),
+            ..Default::default()
+        };
+        let records = get_records(&conn, &filter_name).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].id, "rec-2");
+
+        // Update record
+        let mut updated_rec = record1.clone();
+        updated_rec.amount_idr = 1_500_000;
+        update_record(&conn, &updated_rec).unwrap();
+        let fetched_updated = get_record_by_id(&conn, "rec-1").unwrap().unwrap();
+        assert_eq!(fetched_updated.amount_idr, 1_500_000);
+
+        // Delete record
+        delete_record(&conn, "rec-2").unwrap();
+        let remaining = get_records(&conn, &RecordFilter::default()).unwrap();
+        assert_eq!(remaining.len(), 1);
+    }
+
+    #[test]
+    fn test_date_range_and_case_insensitive_search() {
+        let conn = setup_test_db();
+
+        let r1 = PaymentRecord {
+            id: "1".to_string(),
+            student_name: "ALEXANDER WIJAYA".to_string(),
+            payment_date: "2026-10-01".to_string(),
+            amount_idr: 500_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            created_at: "2026-10-01T10:00:00Z".to_string(),
+            updated_at: "2026-10-01T10:00:00Z".to_string(),
+        };
+
+        let r2 = PaymentRecord {
+            id: "2".to_string(),
+            student_name: "Alexander Pratama".to_string(),
+            payment_date: "2026-10-15".to_string(),
+            amount_idr: 800_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            created_at: "2026-10-15T10:00:00Z".to_string(),
+            updated_at: "2026-10-15T10:00:00Z".to_string(),
+        };
+
+        let r3 = PaymentRecord {
+            id: "3".to_string(),
+            student_name: "Dewi Lestari".to_string(),
+            payment_date: "2026-10-31".to_string(),
+            amount_idr: 1_200_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            created_at: "2026-10-31T10:00:00Z".to_string(),
+            updated_at: "2026-10-31T10:00:00Z".to_string(),
+        };
+
+        create_record(&conn, &r1).unwrap();
+        create_record(&conn, &r2).unwrap();
+        create_record(&conn, &r3).unwrap();
+
+        // Case-insensitive search: "alex"
+        let filter_alex = RecordFilter {
+            search: Some("alex".to_string()),
+            ..Default::default()
+        };
+        let res = get_records(&conn, &filter_alex).unwrap();
+        assert_eq!(res.len(), 2);
+
+        // Date range: 2026-10-05 to 2026-10-20
+        let filter_range = RecordFilter {
+            from_date: Some("2026-10-05".to_string()),
+            to_date: Some("2026-10-20".to_string()),
+            ..Default::default()
+        };
+        let res_range = get_records(&conn, &filter_range).unwrap();
+        assert_eq!(res_range.len(), 1);
+        assert_eq!(res_range[0].id, "2");
+
+        let sum_range = get_summary(&conn, &filter_range).unwrap();
+        assert_eq!(sum_range.total_amount_idr, 2_500_000);
+        assert_eq!(sum_range.filtered_amount_idr, 800_000);
+        assert_eq!(sum_range.filtered_records, 1);
+    }
+}
