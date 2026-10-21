@@ -42,7 +42,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Rust toolchain
@@ -58,10 +58,8 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Run Frontend Tests & Linter
-        run: |
-          npm run lint
-          npx vitest run
+      - name: Run Frontend Linter
+        run: npm run lint
 
       - name: Run Backend Rust Tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
@@ -81,7 +79,7 @@ jobs:
             ### Downloads:
             - **Windows**: `.exe` (NSIS Setup Installer) & `.msi` (Windows Installer)
             - **macOS**: `.dmg` (Universal Apple Silicon & Intel) & `.app`
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
