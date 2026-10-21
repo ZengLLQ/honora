@@ -81,6 +81,7 @@ export interface IPaymentService {
   createRecord(payload: CreateRecordPayload): Promise<PaymentRecord>;
   updateRecord(payload: UpdateRecordPayload): Promise<PaymentRecord>;
   deleteRecord(id: string): Promise<void>;
+  togglePaymentStatus(id: string): Promise<PaymentRecord>;
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
 }
@@ -151,6 +152,7 @@ Both platforms employ an automated, non-destructive optimization pipeline:
 | `student_name` | `TEXT NOT NULL` | Indexed | Case-insensitive student search target |
 | `payment_date` | `TEXT NOT NULL` | ISO 8601 (`YYYY-MM-DD`) | Transfer date |
 | `amount_idr` | `INTEGER NOT NULL` | 64-bit integer | Transfer amount in Indonesian Rupiah |
+| `status` | `TEXT NOT NULL` | Indexed | Payment fulfillment status (`PAID` or `UNPAID`) |
 | `receipt_storage_path` | `TEXT NULL` | Foreign key / path | Storage key or local filename |
 | `receipt_mime_type` | `TEXT NULL` | String | MIME type (`image/jpeg`, `image/png`, `image/webp`) |
 | `receipt_original_size_bytes` | `INTEGER NULL` | Bytes | Input file size before compression |
@@ -207,9 +209,9 @@ The test suite validates both native Rust engine primitives and React client com
 | Test Suite | File | Test Count | Scope |
 |---|---|---|---|
 | **Rust Unit Tests** | `src-tauri/src/image_optimizer.rs` | 10 | Magic bytes, downscale math, JPEG/PNG/WebP encoders, EXIF rotation, large image handling |
-| **Rust DB & Storage Tests**| `src-tauri/src/db.rs`, `storage.rs` | 5 | SQLite migrations, CRUD, case-insensitive search, date range filtering, disk I/O |
+| **Rust DB & Storage Tests**| `src-tauri/src/db.rs`, `storage.rs` | 6 | SQLite migrations, status filtering, CRUD, case-insensitive search, date range filtering, disk I/O |
 | **Formatters Unit Tests** | `src/test/formatters.test.ts` | 10 | Indonesian Rupiah formatting (`formatIDR`), integer parsing, byte formatting |
 | **Compression Tests** | `src/test/imageCompression.test.ts` | 8 | Magic byte identification, dimension calculation, aspect ratio bounds |
-| **Storage Service Tests** | `src/test/storageService.test.ts` | 4 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling |
-| **Component UI Tests** | `src/test/components.test.tsx` | 21 | Header, Summary 3-metrics, FilterBar, RecordItem, Modals, Zero-student state |
-| **Total Automated Tests** | — | **58** | **100% Passing** |
+| **Storage Service Tests** | `src/test/storageService.test.ts` | 5 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling, status toggle |
+| **Component UI Tests** | `src/test/components.test.tsx` | 29 | Header, Summary 3-metrics, FilterBar, RecordItem, Modals, Status toggle, Zero-student state |
+| **Total Automated Tests** | — | **68** | **100% Passing** |

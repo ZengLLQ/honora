@@ -19,9 +19,17 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
   1. Enter student name.
   2. Select transfer date (defaulting to today).
   3. Enter transfer amount in integer Indonesian Rupiah (`IDR`).
-  4. Upload bank transfer receipt (automatically compressed).
-  5. Save payment record.
-  6. Search, review, inspect, edit, or delete records.
+  4. Select payment status (`PAID` or `UNPAID`).
+  5. Upload bank transfer receipt (automatically compressed).
+  6. Save payment record.
+  7. Search, review, inspect, edit, or delete records.
+- **Interactive PAID / UNPAID Status Toggle**:
+  - One-click status badge on every record row (`RecordItem`) with immediate optimistic UI updates and concurrent click throttling.
+  - Safe, idempotent SQLite schema migration in Rust backend (`ALTER TABLE payment_records ADD COLUMN status TEXT NOT NULL DEFAULT 'PAID'`).
+  - Modal status selector in `PaymentModal` and live toggle badge in `ReceiptViewerModal`.
+  - Comprehensive status filtering (`ALL STATUS`, `PAID ONLY`, `UNPAID ONLY`) in the Filter Bar with dynamic financial summary synchronization.
+- **Unified Brand Logo**:
+  - Signature Heron AI geometric brand mark deployed across the top navigation bar, the main page hero head title (`PAYMENT RECORDS.`), and the browser tab `favicon.svg`.
 - **Automatic Receipt Image Optimization**:
   - Validates file content using magic byte signatures (JPEG, PNG, WebP) up to 20 MB.
   - Automatically downsamples oversized receipts preserving aspect ratio (max 2000 × 3000 px).
@@ -32,6 +40,7 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
   - Direct 3-metric overview: **Total Payments**, **Total Received** (all-time), and **Active Date Range** amount.
   - Live search by student name (case-insensitive).
   - Quick month selector (`October 2026`, `September 2026`, etc.).
+  - Status filter (`ALL`, `PAID`, `UNPAID`).
   - Custom date range filter (`From Date` – `To Date`) with one-click reset.
 - **High-Resolution Receipt Inspector**:
   - Image preview with interactive zoom controls (50% to 250%, Reset).
@@ -66,8 +75,8 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
 - **Web Persistence**: Browser IndexedDB (`TutorPaymentRecordsDB`) with dedicated stores for structured records and binary receipt blobs.
 - **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
-  - **Rust**: 15 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, and financial filtering.
-  - **Vitest**: 43 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, and React component interactions.
+  - **Rust**: 16 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, and status filtering/migrations.
+  - **Vitest**: 52 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, status toggle concurrency locks, and React component interactions.
 
 ---
 
@@ -133,11 +142,11 @@ The application is pre-configured for instant deployment on Vercel:
 ### Run Rust Backend Unit Tests
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
-# All 15 unit tests pass
+# All 16 unit tests pass
 ```
 
 ### Run Frontend & UI Tests
 ```bash
 npm test # or npx vitest run
-# All 43 Vitest unit and integration tests pass
+# All 52 Vitest unit and integration tests pass
 ```

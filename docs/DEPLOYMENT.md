@@ -142,10 +142,10 @@ src-tauri/target/release/app.exe
 Before deploying updates or releasing binaries, run the full verification pipeline:
 
 ```bash
-# 1. Run all frontend Vitest unit and integration tests (43 tests)
+# 1. Run all frontend Vitest unit and integration tests (52 tests)
 npm test
 
-# 2. Run all Rust backend unit tests (15 tests)
+# 2. Run all Rust backend unit tests (16 tests)
 cargo test --manifest-path src-tauri/Cargo.toml
 
 # 3. Run zero-warning static analysis
