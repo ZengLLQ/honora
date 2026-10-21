@@ -26,9 +26,11 @@ jobs:
         include:
           - platform: 'windows-latest'
             target: 'x86_64-pc-windows-msvc'
+            rust_targets: ''
             args: ''
           - platform: 'macos-latest'
             target: 'universal-apple-darwin'
+            rust_targets: 'aarch64-apple-darwin,x86_64-apple-darwin'
             args: '--target universal-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
@@ -46,7 +48,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Rust Cache
         uses: swatinem/rust-cache@v2
@@ -69,8 +71,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.release_tag || 'v0.1.0') }}
-          releaseName: 'Tutor Payment Records ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.release_tag || 'v0.1.0') }}'
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || (inputs.release_tag != '' && inputs.release_tag || 'v__VERSION__') }}
+          releaseName: 'Tutor Payment Records ${{ github.ref_type == 'tag' && github.ref_name || (inputs.release_tag != '' && inputs.release_tag || 'v__VERSION__') }}'
           releaseBody: |
             ## Tutor Payment Records Desktop Release
 
@@ -79,7 +81,7 @@ jobs:
             ### Downloads:
             - **Windows**: `.exe` (NSIS Installer) & `.msi`
             - **macOS**: `.dmg` (Apple Silicon & Intel Universal binary) & `.app`
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
 
@@ -90,3 +92,4 @@ jobs:
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/
             src-tauri/target/release/bundle/
+          if-no-files-found: warn

@@ -146,7 +146,7 @@ npm run tauri build
 This compiles the optimized Rust binary and packages the Windows setup installer:
 - **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Tutor Payment Records_0.1.0_x64-setup.exe`
 - **MSI Installer (Optional)**: `src-tauri/target/release/bundle/msi/Tutor Payment Records_0.1.0_x64_en-US.msi`
-- **Standalone Binary**: `src-tauri/target/release/Tutor Payment Records.exe`
+- **Standalone Binary**: `src-tauri/target/release/tutor-payment-records.exe` (or `app.exe`)
 
 ### Windows Installation Steps
 1. Double-click `Tutor Payment Records_0.1.0_x64-setup.exe`.

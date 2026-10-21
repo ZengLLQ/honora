@@ -3,6 +3,7 @@
   "productName": "Tutor Payment Records",
   "version": "0.1.0",
   "identifier": "com.tutor.paymentrecords",
+  "mainBinaryName": "tutor-payment-records",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
