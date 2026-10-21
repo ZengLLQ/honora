@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tutor-payment-records",
+  "productName": "Tutor Payment Records",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "com.tutor.paymentrecords",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -28,15 +28,44 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Tutor Payment Records",
+    "copyright": "Copyright © 2026 Tutor Payment Records. All rights reserved.",
+    "category": "Finance",
+    "shortDescription": "A desktop application for private tutors to record, organize, audit, and review student bank transfer receipts.",
+    "longDescription": "Tutor Payment Records provides offline-first payment tracking, local SQLite persistence, automatic receipt compression, and financial auditing designed for private tutors.",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
-      "icons/icon.ico"
+      "icons/icon.ico",
+      "icons/icon.png"
     ],
-    "android": {
-      "debugApplicationIdSuffix": ".debug"
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      },
+      "wix": {
+        "language": "en-US"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.13",
+      "dmg": {
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        }
+      }
     }
   }
 }

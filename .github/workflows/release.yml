@@ -1,0 +1,92 @@
+name: Release Desktop Apps
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag (e.g. v0.1.0)'
+        required: false
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            target: 'x86_64-pc-windows-msvc'
+            args: ''
+          - platform: 'macos-latest'
+            target: 'universal-apple-darwin'
+            args: '--target universal-apple-darwin'
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run Frontend Tests & Linter
+        run: |
+          npm run lint
+          npx vitest run
+
+      - name: Run Backend Rust Tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build Tauri Desktop Application
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.release_tag || 'v0.1.0') }}
+          releaseName: 'Tutor Payment Records ${{ github.ref_type == 'tag' && github.ref_name || (github.event.inputs.release_tag || 'v0.1.0') }}'
+          releaseBody: |
+            ## Tutor Payment Records Desktop Release
+
+            Official multi-platform desktop release featuring offline SQLite database, receipt archive management, and automatic image compression.
+
+            ### Downloads:
+            - **Windows**: `.exe` (NSIS Installer) & `.msi`
+            - **macOS**: `.dmg` (Apple Silicon & Intel Universal binary) & `.app`
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tutor-payment-records-${{ matrix.platform }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/
+            src-tauri/target/release/bundle/

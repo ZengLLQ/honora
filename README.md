@@ -110,12 +110,28 @@ npm run build
 npm run tauri dev
 ```
 
-### Building Desktop Binary
+### Desktop Installers (Windows & macOS)
+
+#### Windows Setup Installer (`.exe` & `.msi`)
+Build local Windows installer setup:
 ```bash
-cd src-tauri
-cargo build --release
-# Standalone executable located at src-tauri/target/release/app.exe
+npm run tauri build
 ```
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Tutor Payment Records_0.1.0_x64-setup.exe`
+- **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
+- **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.tutor.paymentrecords\`.
+
+#### macOS Version (`.dmg` & `.app`)
+Build Universal macOS installer (Apple Silicon + Intel):
+```bash
+npm run tauri build -- --target universal-apple-darwin
+```
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Tutor Payment Records_0.1.0_universal.dmg`
+- **Installation**: Open `.dmg` and drag `Tutor Payment Records.app` into `/Applications`.
+- **Storage**: Data and receipts stored in `~/Library/Application Support/com.tutor.paymentrecords/`.
+
+#### Automated GitHub Actions CI/CD
+A complete release workflow (`.github/workflows/release.yml`) compiles Windows and macOS installers on GitHub hosted runners upon pushing version tags (`v*`) or master releases.
 
 ---
 
