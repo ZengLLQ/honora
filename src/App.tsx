@@ -31,6 +31,7 @@ export function App() {
   const [recordToEdit, setRecordToEdit] = useState<PaymentRecord | null>(null);
   const [viewerRecord, setViewerRecord] = useState<PaymentRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<PaymentRecord | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   const refreshData = useCallback(() => {
     let isCancelled = false;
@@ -90,12 +91,33 @@ export function App() {
   };
 
   const handleToggleStatus = async (rec: PaymentRecord) => {
+    if (togglingIds.has(rec.id)) return;
+    setTogglingIds((prev) => new Set(prev).add(rec.id));
+
+    // Optimistic status flip for instant UI responsiveness
+    const currentUpper = (rec.status ?? 'PAID').trim().toUpperCase();
+    const nextStatus: 'PAID' | 'UNPAID' = currentUpper === 'PAID' ? 'UNPAID' : 'PAID';
+
+    setRecords((prev) =>
+      prev.map((r) => (r.id === rec.id ? { ...r, status: nextStatus } : r))
+    );
+    setViewerRecord((prev) =>
+      prev && prev.id === rec.id ? { ...prev, status: nextStatus } : prev
+    );
+
     try {
       const updated = await service.togglePaymentStatus(rec.id);
       setViewerRecord((prev) => (prev && prev.id === rec.id ? updated : prev));
       refreshData();
     } catch (err) {
       console.error('Failed to toggle payment status:', err);
+      refreshData();
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(rec.id);
+        return next;
+      });
     }
   };
 
@@ -160,6 +182,7 @@ export function App() {
           onDelete={handleOpenDelete}
           onClearFilter={() => setFilter({})}
           onToggleStatus={handleToggleStatus}
+          togglingIds={togglingIds}
         />
       </main>
 
@@ -197,6 +220,7 @@ export function App() {
         onEdit={handleOpenEdit}
         onDelete={handleOpenDelete}
         onToggleStatus={handleToggleStatus}
+        isToggling={Boolean(viewerRecord && togglingIds.has(viewerRecord.id))}
       />
 
       <DeleteConfirmModal

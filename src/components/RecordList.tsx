@@ -13,6 +13,7 @@ interface RecordListProps {
   onDelete: (record: PaymentRecord) => void;
   onClearFilter: () => void;
   onToggleStatus?: (record: PaymentRecord) => void;
+  togglingIds?: Set<string>;
 }
 
 export const RecordList: React.FC<RecordListProps> = ({
@@ -25,6 +26,7 @@ export const RecordList: React.FC<RecordListProps> = ({
   onDelete,
   onClearFilter,
   onToggleStatus,
+  togglingIds,
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -32,7 +34,8 @@ export const RecordList: React.FC<RecordListProps> = ({
     filter.search?.trim() ||
     filter.month?.trim() ||
     filter.from_date?.trim() ||
-    filter.to_date?.trim()
+    filter.to_date?.trim() ||
+    filter.status?.trim()
   );
 
   if (loading) {
@@ -138,6 +141,7 @@ export const RecordList: React.FC<RecordListProps> = ({
             onEdit={onEdit}
             onDelete={onDelete}
             onToggleStatus={onToggleStatus}
+            isToggling={togglingIds?.has(record.id)}
           />
         ))}
       </div>

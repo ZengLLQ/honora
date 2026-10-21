@@ -155,7 +155,12 @@ pub fn create_payment_record(
         receipt_width: width,
         receipt_height: height,
         note: payload.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()),
-        status: Some(payload.status.unwrap_or_else(|| "PAID".to_string())),
+        status: Some(
+            match payload.status.as_deref().map(|s| s.trim().to_uppercase()) {
+                Some(ref s) if s == "UNPAID" => "UNPAID".to_string(),
+                _ => "PAID".to_string(),
+            },
+        ),
         created_at: now.clone(),
         updated_at: now,
     };
@@ -278,7 +283,17 @@ pub fn update_payment_record(
         receipt_width: width,
         receipt_height: height,
         note: payload.note.map(|n| n.trim().to_string()).filter(|n| !n.is_empty()),
-        status: payload.status.or(existing.status).or_else(|| Some("PAID".to_string())),
+        status: Some(
+            match payload
+                .status
+                .as_deref()
+                .or(existing.status.as_deref())
+                .map(|s| s.trim().to_uppercase())
+            {
+                Some(ref s) if s == "UNPAID" => "UNPAID".to_string(),
+                _ => "PAID".to_string(),
+            },
+        ),
         created_at: existing.created_at,
         updated_at: now,
     };
@@ -298,7 +313,7 @@ pub fn toggle_payment_status(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "Payment record not found".to_string())?;
 
-    let next_status = match record.status.as_deref() {
+    let next_status = match record.status.as_deref().map(|s| s.trim().to_uppercase()).as_deref() {
         Some("UNPAID") => "PAID",
         _ => "UNPAID",
     };

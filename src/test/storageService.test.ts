@@ -181,5 +181,26 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const unpaidList = await service.getRecords({ status: 'UNPAID' });
     expect(unpaidList.length).toBe(1);
     expect(unpaidList[0].id).toBe(rec2.id);
+
+    // 5. Case-insensitive filtering
+    const unpaidLower = await service.getRecords({ status: 'unpaid' as any });
+    expect(unpaidLower.length).toBe(1);
+    expect(unpaidLower[0].id).toBe(rec2.id);
+
+    // 6. Summary filtered by status
+    const summaryUnpaid = await service.getSummary({ status: 'UNPAID' });
+    expect(summaryUnpaid.total_records).toBe(2);
+    expect(summaryUnpaid.total_amount_idr).toBe(1100000);
+    expect(summaryUnpaid.filtered_records).toBe(1);
+    expect(summaryUnpaid.filtered_amount_idr).toBe(600000);
+
+    // 7. Normalization of invalid status to PAID
+    const rec3 = await service.createRecord({
+      student_name: 'Student Three',
+      payment_date: '2026-10-22',
+      amount_idr: 400000,
+      status: 'invalid_status' as any,
+    });
+    expect(rec3.status).toBe('PAID');
   });
 });

@@ -11,6 +11,7 @@ interface RecordItemProps {
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
   onToggleStatus?: (record: PaymentRecord) => void;
+  isToggling?: boolean;
 }
 
 export const RecordItem: React.FC<RecordItemProps> = ({
@@ -21,9 +22,11 @@ export const RecordItem: React.FC<RecordItemProps> = ({
   onEdit,
   onDelete,
   onToggleStatus,
+  isToggling = false,
 }) => {
   const hasReceipt = Boolean(record.receipt_storage_path);
-  const status = record.status ?? 'PAID';
+  const rawStatus = (record.status ?? 'PAID').trim().toUpperCase();
+  const status: 'PAID' | 'UNPAID' = rawStatus === 'UNPAID' ? 'UNPAID' : 'PAID';
 
   return (
     <div
@@ -53,13 +56,22 @@ export const RecordItem: React.FC<RecordItemProps> = ({
                 {/* Status Toggle Badge */}
                 <button
                   type="button"
+                  disabled={isToggling}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleStatus?.(record);
+                    if (!isToggling) {
+                      onToggleStatus?.(record);
+                    }
                   }}
-                  title={`Status: ${status}. Click to change to ${status === 'PAID' ? 'UNPAID' : 'PAID'}`}
+                  title={
+                    isToggling
+                      ? 'Updating status...'
+                      : `Status: ${status}. Click to change to ${status === 'PAID' ? 'UNPAID' : 'PAID'}`
+                  }
                   aria-label={`Status: ${status}. Click to change to ${status === 'PAID' ? 'UNPAID' : 'PAID'}`}
-                  className={`btn-heron inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-sans font-semibold tracking-wider uppercase border transition-all cursor-pointer select-none ${
+                  className={`btn-heron inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-sans font-semibold tracking-wider uppercase border transition-all select-none ${
+                    isToggling ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+                  } ${
                     status === 'PAID'
                       ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
                       : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
@@ -67,7 +79,11 @@ export const RecordItem: React.FC<RecordItemProps> = ({
                 >
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
-                      status === 'PAID' ? 'bg-emerald-600' : 'bg-amber-600'
+                      isToggling
+                        ? 'border border-current border-t-transparent animate-spin'
+                        : status === 'PAID'
+                        ? 'bg-emerald-600'
+                        : 'bg-amber-600'
                     }`}
                   />
                   <span>{status}</span>

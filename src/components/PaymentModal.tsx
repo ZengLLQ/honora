@@ -33,7 +33,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     recordToEdit?.amount_idr ? recordToEdit.amount_idr.toLocaleString('id-ID') : ''
   );
   const [note, setNote] = useState(recordToEdit?.note || '');
-  const [status, setStatus] = useState<'PAID' | 'UNPAID'>(recordToEdit?.status ?? 'PAID');
+  const [status, setStatus] = useState<'PAID' | 'UNPAID'>(() =>
+    recordToEdit?.status?.trim().toUpperCase() === 'UNPAID' ? 'UNPAID' : 'PAID'
+  );
 
   // Receipt optimization states
   const [isOptimizing, setIsOptimizing] = useState(false);

@@ -16,7 +16,8 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
     filter.search?.trim() ||
     filter.month?.trim() ||
     filter.from_date?.trim() ||
-    filter.to_date?.trim()
+    filter.to_date?.trim() ||
+    filter.status?.trim()
   );
 
   return (

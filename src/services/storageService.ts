@@ -155,7 +155,12 @@ class WebIndexedDBPaymentService implements IPaymentService {
     }
 
     if (filter?.status) {
-      result = result.filter((r) => (r.status ?? 'PAID') === filter.status);
+      const target = filter.status.trim().toUpperCase();
+      if (target) {
+        result = result.filter(
+          (r) => (r.status ?? 'PAID').trim().toUpperCase() === target
+        );
+      }
     }
 
     // Sort: newest payment_date first, then newest created_at
@@ -252,6 +257,9 @@ class WebIndexedDBPaymentService implements IPaymentService {
       });
     }
 
+    const statusUpper = (payload.status ?? 'PAID').trim().toUpperCase();
+    const status: 'PAID' | 'UNPAID' = statusUpper === 'UNPAID' ? 'UNPAID' : 'PAID';
+
     const record: PaymentRecord = {
       id,
       student_name: name,
@@ -264,7 +272,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
       receipt_width: payload.receipt_width || null,
       receipt_height: payload.receipt_height || null,
       note: payload.note?.trim() || null,
-      status: payload.status || 'PAID',
+      status,
       created_at: now,
       updated_at: now,
     };
@@ -343,6 +351,10 @@ class WebIndexedDBPaymentService implements IPaymentService {
       });
     }
 
+    const rawStatus = payload.status ?? existing.status ?? 'PAID';
+    const statusUpper = rawStatus.trim().toUpperCase();
+    const status: 'PAID' | 'UNPAID' = statusUpper === 'UNPAID' ? 'UNPAID' : 'PAID';
+
     const updated: PaymentRecord = {
       id: payload.id,
       student_name: name,
@@ -355,7 +367,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
       receipt_width: width,
       receipt_height: height,
       note: payload.note?.trim() || null,
-      status: payload.status ?? existing.status ?? 'PAID',
+      status,
       created_at: existing.created_at,
       updated_at: now,
     };
@@ -398,7 +410,8 @@ class WebIndexedDBPaymentService implements IPaymentService {
   async togglePaymentStatus(id: string): Promise<PaymentRecord> {
     const existing = await this.getRecord(id);
     if (!existing) throw new Error('Payment record not found.');
-    const nextStatus: 'PAID' | 'UNPAID' = (existing.status ?? 'PAID') === 'PAID' ? 'UNPAID' : 'PAID';
+    const current = (existing.status ?? 'PAID').trim().toUpperCase();
+    const nextStatus: 'PAID' | 'UNPAID' = current === 'PAID' ? 'UNPAID' : 'PAID';
     return this.updateRecord({
       id: existing.id,
       student_name: existing.student_name,

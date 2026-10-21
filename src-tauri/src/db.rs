@@ -47,11 +47,26 @@ pub fn init_db(conn: &Connection) -> Result<()> {
         )?;
     }
 
+    // Ensure no NULL or invalid blank status strings exist
+    conn.execute(
+        "UPDATE payment_records SET status = 'PAID' WHERE status IS NULL OR TRIM(status) = ''",
+        [],
+    )?;
+
+    // Create index on status column once guaranteed to exist
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_payment_records_status ON payment_records(status)",
+        [],
+    )?;
+
     Ok(())
 }
 
 pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
-    let status_val = record.status.as_deref().unwrap_or("PAID");
+    let status_val = match record.status.as_deref().map(|s| s.trim().to_uppercase()) {
+        Some(ref s) if s == "UNPAID" => "UNPAID",
+        _ => "PAID",
+    };
     conn.execute(
         "
         INSERT INTO payment_records (
@@ -84,7 +99,10 @@ pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
 }
 
 pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
-    let status_val = record.status.as_deref().unwrap_or("PAID");
+    let status_val = match record.status.as_deref().map(|s| s.trim().to_uppercase()) {
+        Some(ref s) if s == "UNPAID" => "UNPAID",
+        _ => "PAID",
+    };
     conn.execute(
         "
         UPDATE payment_records SET
@@ -211,10 +229,10 @@ pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<Payme
     }
 
     if let Some(ref status) = filter.status {
-        let trimmed = status.trim();
+        let trimmed = status.trim().to_uppercase();
         if !trimmed.is_empty() {
-            query.push_str(" AND status = ?");
-            sql_params.push(Box::new(trimmed.to_string()));
+            query.push_str(" AND UPPER(status) = ?");
+            sql_params.push(Box::new(trimmed));
         }
     }
 
@@ -294,10 +312,10 @@ pub fn get_summary(conn: &Connection, filter: &RecordFilter) -> Result<PaymentSu
     }
 
     if let Some(ref status) = filter.status {
-        let trimmed = status.trim();
+        let trimmed = status.trim().to_uppercase();
         if !trimmed.is_empty() {
-            query.push_str(" AND status = ?");
-            sql_params.push(Box::new(trimmed.to_string()));
+            query.push_str(" AND UPPER(status) = ?");
+            sql_params.push(Box::new(trimmed));
         }
     }
 
@@ -578,5 +596,35 @@ mod tests {
         assert_eq!(sum_unpaid.filtered_records, 1);
         assert_eq!(sum_unpaid.total_amount_idr, 1_100_000);
         assert_eq!(sum_unpaid.total_records, 2);
+
+        // Case-insensitive status query: "unpaid"
+        let filter_unpaid_lower = RecordFilter {
+            status: Some("unpaid".to_string()),
+            ..Default::default()
+        };
+        let unpaid_lower = get_records(&conn, &filter_unpaid_lower).unwrap();
+        assert_eq!(unpaid_lower.len(), 1);
+        assert_eq!(unpaid_lower[0].id, "rec-unpaid");
+
+        // Normalization of unknown status string to "PAID"
+        let unknown = PaymentRecord {
+            id: "rec-unknown".to_string(),
+            student_name: "Unknown Status".to_string(),
+            payment_date: "2026-10-12".to_string(),
+            amount_idr: 300_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("pending_custom".to_string()),
+            created_at: "2026-10-12T10:00:00Z".to_string(),
+            updated_at: "2026-10-12T10:00:00Z".to_string(),
+        };
+        create_record(&conn, &unknown).unwrap();
+        let fetched_unknown = get_record_by_id(&conn, "rec-unknown").unwrap().unwrap();
+        assert_eq!(fetched_unknown.status.as_deref(), Some("PAID"));
     }
 }

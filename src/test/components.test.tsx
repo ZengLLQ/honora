@@ -96,6 +96,20 @@ describe('UI Components', () => {
       expect(screen.getByText(/\/ 4/)).toBeInTheDocument();
     });
 
+    it('displays filtered badges and amounts when only status filter is active', () => {
+      render(
+        <FinancialSummary
+          summary={dummySummary}
+          filter={{ status: 'UNPAID' }}
+        />
+      );
+      expect(screen.getAllByText('FILTERED').length).toBeGreaterThan(0);
+      expect(screen.getByText('Rp 5.000.000')).toBeInTheDocument(); // all-time total received
+      expect(screen.getByText('Rp 2.500.000')).toBeInTheDocument(); // filtered amount for unpaid
+      expect(screen.getByText(/^\s*2\s*$/)).toBeInTheDocument();
+      expect(screen.getByText(/\/ 4/)).toBeInTheDocument();
+    });
+
     it('renders clean zero-state without errors', () => {
       const zeroSummary: PaymentSummary = {
         total_amount_idr: 0,
@@ -257,6 +271,27 @@ describe('UI Components', () => {
       fireEvent.click(unpaidBadge);
       expect(onToggleStatus).toHaveBeenCalledWith(dummyRecordUnpaid);
     });
+
+    it('disables status toggle badge and prevents callback when isToggling is true', () => {
+      const onToggleStatus = vi.fn();
+      render(
+        <RecordItem
+          record={dummyRecordWithReceipt}
+          onViewReceipt={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleStatus={onToggleStatus}
+          isToggling={true}
+        />
+      );
+
+      const paidBadge = screen.getByRole('button', { name: /Status: PAID/i });
+      expect(paidBadge).toBeDisabled();
+      expect(paidBadge).toHaveClass('opacity-60', 'cursor-wait');
+
+      fireEvent.click(paidBadge);
+      expect(onToggleStatus).not.toHaveBeenCalled();
+    });
   });
 
   describe('RecordList', () => {
@@ -287,6 +322,26 @@ describe('UI Components', () => {
         <RecordList
           records={[]}
           filter={{ search: 'Unknown' }}
+          loading={false}
+          onNewPayment={vi.fn()}
+          onViewReceipt={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onClearFilter={onClear}
+        />
+      );
+
+      expect(screen.getByText('NO MATCHING RECORDS.')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Clear Filters'));
+      expect(onClear).toHaveBeenCalled();
+    });
+
+    it('renders no matching records state when only status filter is active and empty', () => {
+      const onClear = vi.fn();
+      render(
+        <RecordList
+          records={[]}
+          filter={{ status: 'UNPAID' }}
           loading={false}
           onNewPayment={vi.fn()}
           onViewReceipt={vi.fn()}
@@ -476,6 +531,28 @@ describe('UI Components', () => {
 
       fireEvent.click(statusToggleBtn);
       expect(onToggleStatus).toHaveBeenCalledWith(dummyRecordWithReceipt);
+    });
+
+    it('disables status toggle button and shows updating state when isToggling is true', () => {
+      const onToggleStatus = vi.fn();
+      render(
+        <ReceiptViewerModal
+          isOpen={true}
+          record={dummyRecordWithReceipt}
+          onClose={vi.fn()}
+          onEdit={vi.fn()}
+          onDelete={vi.fn()}
+          onToggleStatus={onToggleStatus}
+          isToggling={true}
+        />
+      );
+
+      const statusToggleBtn = screen.getByRole('button', { name: /Toggle payment status/i });
+      expect(statusToggleBtn).toBeDisabled();
+      expect(statusToggleBtn).toHaveTextContent('(updating...)');
+
+      fireEvent.click(statusToggleBtn);
+      expect(onToggleStatus).not.toHaveBeenCalled();
     });
 
     it('handles zoom in, zoom out, and reset zoom controls', () => {

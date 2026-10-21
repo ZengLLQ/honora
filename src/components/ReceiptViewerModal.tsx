@@ -19,6 +19,7 @@ interface ReceiptViewerModalProps {
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
   onToggleStatus?: (record: PaymentRecord) => void;
+  isToggling?: boolean;
 }
 
 export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
@@ -28,6 +29,7 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
   onEdit,
   onDelete,
   onToggleStatus,
+  isToggling = false,
 }) => {
   const [dataUrl, setDataUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
@@ -58,7 +60,8 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, record]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally avoid re-fetching image when other fields like status toggle
+  }, [isOpen, record?.id, record?.receipt_storage_path]);
 
   if (!isOpen || !record) return null;
 
@@ -214,27 +217,48 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
                 <span className="text-[10px] font-sans font-medium tracking-wider text-heron-tertiary uppercase block mb-1">
                   PAYMENT STATUS
                 </span>
-                <button
-                  type="button"
-                  onClick={() => onToggleStatus?.(record)}
-                  title={`Status: ${record.status ?? 'PAID'}. Click to toggle.`}
-                  aria-label={`Toggle payment status for ${record.student_name}`}
-                  className={`btn-heron inline-flex items-center gap-2 px-3 py-1.5 text-xs font-sans font-semibold tracking-wider uppercase border transition-all cursor-pointer ${
-                    (record.status ?? 'PAID') === 'PAID'
-                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
-                      : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
-                  }`}
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      (record.status ?? 'PAID') === 'PAID' ? 'bg-emerald-600' : 'bg-amber-600'
-                    }`}
-                  />
-                  <span>{record.status ?? 'PAID'}</span>
-                  <span className="text-[10px] text-heron-tertiary font-normal lowercase">
-                    (click to toggle)
-                  </span>
-                </button>
+                {(() => {
+                  const rawStatus = (record.status ?? 'PAID').trim().toUpperCase();
+                  const status: 'PAID' | 'UNPAID' = rawStatus === 'UNPAID' ? 'UNPAID' : 'PAID';
+                  return (
+                    <button
+                      type="button"
+                      disabled={isToggling}
+                      onClick={() => {
+                        if (!isToggling) {
+                          onToggleStatus?.(record);
+                        }
+                      }}
+                      title={
+                        isToggling
+                          ? 'Updating status...'
+                          : `Status: ${status}. Click to toggle.`
+                      }
+                      aria-label={`Toggle payment status for ${record.student_name}`}
+                      className={`btn-heron inline-flex items-center gap-2 px-3 py-1.5 text-xs font-sans font-semibold tracking-wider uppercase border transition-all ${
+                        isToggling ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+                      } ${
+                        status === 'PAID'
+                          ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
+                          : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
+                      }`}
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isToggling
+                            ? 'border border-current border-t-transparent animate-spin'
+                            : status === 'PAID'
+                            ? 'bg-emerald-600'
+                            : 'bg-amber-600'
+                        }`}
+                      />
+                      <span>{status}</span>
+                      <span className="text-[10px] text-heron-tertiary font-normal lowercase">
+                        {isToggling ? '(updating...)' : '(click to toggle)'}
+                      </span>
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Note */}
