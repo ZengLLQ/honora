@@ -71,16 +71,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || (inputs.release_tag != '' && inputs.release_tag || 'v__VERSION__') }}
-          releaseName: 'Tutor Payment Records ${{ github.ref_type == 'tag' && github.ref_name || (inputs.release_tag != '' && inputs.release_tag || 'v__VERSION__') }}'
+          tagName: v__VERSION__
+          releaseName: 'Tutor Payment Records v__VERSION__'
           releaseBody: |
             ## Tutor Payment Records Desktop Release
 
             Official multi-platform desktop release featuring offline SQLite database, receipt archive management, and automatic image compression.
 
             ### Downloads:
-            - **Windows**: `.exe` (NSIS Installer) & `.msi`
-            - **macOS**: `.dmg` (Apple Silicon & Intel Universal binary) & `.app`
+            - **Windows**: `.exe` (NSIS Setup Installer) & `.msi` (Windows Installer)
+            - **macOS**: `.dmg` (Universal Apple Silicon & Intel) & `.app`
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
