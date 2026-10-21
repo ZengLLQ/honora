@@ -5,73 +5,88 @@ import { formatIDR } from '../utils/formatters';
 interface FinancialSummaryProps {
   summary: PaymentSummary;
   filter: RecordFilter;
+  verifiedCount?: number;
 }
 
-export const FinancialSummary: React.FC<FinancialSummaryProps> = ({ summary, filter }) => {
-  const isFiltered = Boolean(filter.search || filter.month || filter.from_date || filter.to_date);
+export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
+  summary,
+  filter,
+}) => {
+  const isFiltered = Boolean(
+    filter.search?.trim() ||
+    filter.month?.trim() ||
+    filter.from_date?.trim() ||
+    filter.to_date?.trim()
+  );
 
   return (
-    <section className="bg-ivory hairline-b py-8 lg:py-10">
+    <section className="border-b border-heron-border bg-heron-surface">
       <div className="max-w-page mx-auto px-6 lg:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 divide-y md:divide-y-0 md:divide-x divide-editorial-border">
-          {/* Card 1: Total Recorded */}
-          <div className="pt-2 md:pt-0">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase">
-                TOTAL COLLECTED
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-heron-border">
+          {/* Metric 1: Total Payments Recorded */}
+          <div className="py-6 sm:py-8 md:pr-8 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                TOTAL PAYMENTS
               </span>
-              <span className="text-[11px] font-mono tracking-wider text-nearblack/60">
-                ALL TIME
-              </span>
-            </div>
-            <div className="font-display font-extrabold text-3xl lg:text-4xl text-nearblack font-mono-num tracking-tight">
-              {formatIDR(summary.total_amount_idr)}
-            </div>
-            <p className="mt-2 text-xs text-editorial-muted">
-              Lifetime total across {summary.total_records} recorded payment{summary.total_records === 1 ? '' : 's'}.
-            </p>
-          </div>
-
-          {/* Card 2: Filtered / Active Period Amount */}
-          <div className="pt-6 md:pt-0 md:pl-12">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase">
-                {isFiltered ? 'FILTERED PERIOD' : 'ACTIVE VIEW'}
-              </span>
-              {isFiltered && (
-                <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-mono tracking-wider bg-lavender/15 text-lavender font-semibold">
+              {isFiltered ? (
+                <span className="px-2 py-0.5 text-[10px] font-sans tracking-wider bg-heron-primary text-white font-semibold uppercase">
                   FILTERED
+                </span>
+              ) : (
+                <span className="text-[10px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                  ALL TIME
                 </span>
               )}
             </div>
-            <div className="font-display font-extrabold text-3xl lg:text-4xl text-nearblack font-mono-num tracking-tight">
-              {formatIDR(summary.filtered_amount_idr)}
+            <div className="font-display font-bold text-3xl sm:text-4xl text-heron-primary font-mono-num tracking-tight">
+              {isFiltered ? (
+                <>
+                  {summary.filtered_records}{' '}
+                  <span className="text-xl sm:text-2xl text-heron-tertiary font-normal">
+                    / {summary.total_records}
+                  </span>
+                </>
+              ) : (
+                summary.total_records
+              )}
             </div>
-            <p className="mt-2 text-xs text-editorial-muted">
-              {isFiltered
-                ? `Representing ${summary.filtered_records} matching record${summary.filtered_records === 1 ? '' : 's'}.`
-                : 'Showing complete unfiltered ledger summary.'}
-            </p>
           </div>
 
-          {/* Card 3: Transaction Volume & Average */}
-          <div className="pt-6 md:pt-0 md:pl-12">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase">
-                AVERAGE / RECORD
+          {/* Metric 2: Total Amount Received */}
+          <div className="py-6 sm:py-8 md:px-8 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                TOTAL RECEIVED
               </span>
-              <span className="text-[11px] font-mono tracking-wider text-nearblack/60">
-                {summary.filtered_records} RECORDS
+              <span className="text-[10px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                ALL TIME
               </span>
             </div>
-            <div className="font-display font-extrabold text-3xl lg:text-4xl text-nearblack font-mono-num tracking-tight">
-              {summary.filtered_records > 0
-                ? formatIDR(Math.round(summary.filtered_amount_idr / summary.filtered_records))
-                : 'Rp 0'}
+            <div className="font-display font-bold text-3xl sm:text-4xl text-heron-primary font-mono-num tracking-tight">
+              {formatIDR(summary.total_amount_idr)}
             </div>
-            <p className="mt-2 text-xs text-editorial-muted">
-              Mean tuition fee per transfer in this selection.
-            </p>
+          </div>
+
+          {/* Metric 3: Total Amount Within Active Date Range */}
+          <div className="py-6 sm:py-8 md:pl-8 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                ACTIVE DATE RANGE
+              </span>
+              {isFiltered ? (
+                <span className="px-2 py-0.5 text-[10px] font-sans tracking-wider bg-heron-brand/10 text-heron-brand border border-heron-brand/30 font-semibold uppercase">
+                  FILTERED
+                </span>
+              ) : (
+                <span className="text-[10px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+                  ALL DATES
+                </span>
+              )}
+            </div>
+            <div className="font-display font-bold text-3xl sm:text-4xl text-heron-primary font-mono-num tracking-tight">
+              {formatIDR(isFiltered ? summary.filtered_amount_idr : summary.total_amount_idr)}
+            </div>
           </div>
         </div>
       </div>

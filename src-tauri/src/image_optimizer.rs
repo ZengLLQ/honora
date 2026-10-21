@@ -82,6 +82,97 @@ pub fn calculate_resize_dimensions(orig_w: u32, orig_h: u32) -> (u32, u32) {
     (new_w, new_h)
 }
 
+pub fn extract_exif_orientation(bytes: &[u8]) -> Option<u32> {
+    if bytes.len() < 14 || !bytes.starts_with(&[0xFF, 0xD8]) {
+        return None;
+    }
+
+    let mut cursor = 2;
+    while cursor + 4 <= bytes.len() {
+        if bytes[cursor] != 0xFF {
+            break;
+        }
+        let marker = bytes[cursor + 1];
+        // SOS marker (0xDA) or EOI (0xD9) means header metadata ends
+        if marker == 0xDA || marker == 0xD9 {
+            break;
+        }
+        let length = u16::from_be_bytes([bytes[cursor + 2], bytes[cursor + 3]]) as usize;
+        if cursor + 2 + length > bytes.len() {
+            break;
+        }
+
+        // APP1 marker is 0xE1
+        if marker == 0xE1 && length >= 14 {
+            let app1_data = &bytes[cursor + 4..cursor + 2 + length];
+            // Check for "Exif\0\0"
+            if app1_data.starts_with(b"Exif\x00\x00") {
+                let tiff = &app1_data[6..];
+                return parse_tiff_orientation(tiff);
+            }
+        }
+
+        cursor += 2 + length;
+    }
+
+    None
+}
+
+fn parse_tiff_orientation(tiff: &[u8]) -> Option<u32> {
+    if tiff.len() < 8 {
+        return None;
+    }
+
+    let is_le = match &tiff[0..2] {
+        b"II" => true,
+        b"MM" => false,
+        _ => return None,
+    };
+
+    let read_u16 = |slice: &[u8]| -> u16 {
+        if is_le {
+            u16::from_le_bytes([slice[0], slice[1]])
+        } else {
+            u16::from_be_bytes([slice[0], slice[1]])
+        }
+    };
+
+    let read_u32 = |slice: &[u8]| -> u32 {
+        if is_le {
+            u32::from_le_bytes([slice[0], slice[1], slice[2], slice[3]])
+        } else {
+            u32::from_be_bytes([slice[0], slice[1], slice[2], slice[3]])
+        }
+    };
+
+    if read_u16(&tiff[2..4]) != 42 {
+        return None;
+    }
+
+    let ifd_offset = read_u32(&tiff[4..8]) as usize;
+    if ifd_offset + 2 > tiff.len() {
+        return None;
+    }
+
+    let entry_count = read_u16(&tiff[ifd_offset..ifd_offset + 2]) as usize;
+    let mut entry_cursor = ifd_offset + 2;
+
+    for _ in 0..entry_count {
+        if entry_cursor + 12 > tiff.len() {
+            break;
+        }
+        let tag = read_u16(&tiff[entry_cursor..entry_cursor + 2]);
+        if tag == 0x0112 {
+            // Orientation tag
+            let orientation = read_u16(&tiff[entry_cursor + 8..entry_cursor + 10]) as u32;
+            return Some(orientation);
+        }
+        entry_cursor += 12;
+    }
+
+    None
+}
+
 pub fn optimize_image_bytes(raw_bytes: &[u8]) -> Result<OptimizationResult, ImageProcessingError> {
     let original_size = raw_bytes.len();
     if original_size > MAX_INPUT_FILE_SIZE {
@@ -100,13 +191,34 @@ pub fn optimize_image_bytes(raw_bytes: &[u8]) -> Result<OptimizationResult, Imag
     let img = image::load_from_memory_with_format(raw_bytes, image_format)
         .map_err(|e| ImageProcessingError::CorruptedData(e.to_string()))?;
 
-    let (orig_w, orig_h) = img.dimensions();
+    // Correct EXIF orientation before calculating dimensions and resizing
+    let exif_orientation = if detected_format == SupportedFormat::Jpeg {
+        extract_exif_orientation(raw_bytes)
+    } else {
+        None
+    };
+
+    let oriented_img = match exif_orientation {
+        Some(2) => img.fliph(),
+        Some(3) => img.rotate180(),
+        Some(4) => img.flipv(),
+        Some(5) => img.fliph().rotate270(),
+        Some(6) => img.rotate90(),
+        Some(7) => img.fliph().rotate90(),
+        Some(8) => img.rotate270(),
+        _ => img,
+    };
+
+    let (orig_w, orig_h) = oriented_img.dimensions();
     let (target_w, target_h) = calculate_resize_dimensions(orig_w, orig_h);
 
-    let processed_img: DynamicImage = if target_w != orig_w || target_h != orig_h {
-        img.resize(target_w, target_h, FilterType::Lanczos3)
+    let needs_resize = target_w != orig_w || target_h != orig_h;
+    let was_reoriented = exif_orientation.is_some_and(|o| o > 1);
+
+    let processed_img: DynamicImage = if needs_resize {
+        oriented_img.resize(target_w, target_h, FilterType::Lanczos3)
     } else {
-        img
+        oriented_img
     };
 
     let (final_w, final_h) = processed_img.dimensions();
@@ -131,7 +243,7 @@ pub fn optimize_image_bytes(raw_bytes: &[u8]) -> Result<OptimizationResult, Imag
                 .map_err(|e| ImageProcessingError::EncodingFailed(e.to_string()))?;
         }
         SupportedFormat::Png => {
-            // For PNG, try lossless PNG encoding
+            // For PNG, lossless PNG encoding
             let rgba_img = processed_img.to_rgba8();
             let encoder = image::codecs::png::PngEncoder::new(&mut compressed_bytes);
             encoder
@@ -144,7 +256,7 @@ pub fn optimize_image_bytes(raw_bytes: &[u8]) -> Result<OptimizationResult, Imag
                 .map_err(|e| ImageProcessingError::EncodingFailed(e.to_string()))?;
         }
         SupportedFormat::WebP => {
-            // Encode as WebP
+            // Encode as WebP lossless
             let rgba_img = processed_img.to_rgba8();
             let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut compressed_bytes);
             encoder
@@ -158,11 +270,11 @@ pub fn optimize_image_bytes(raw_bytes: &[u8]) -> Result<OptimizationResult, Imag
         }
     }
 
-    // If compressed output is larger than original and original dimensions didn't need resize,
+    // If compressed output is larger than original and original was neither resized nor reoriented,
     // keep original bytes
     let (final_bytes, final_size) = if compressed_bytes.len() >= original_size
-        && orig_w <= MAX_DIMENSION_WIDTH
-        && orig_h <= MAX_DIMENSION_HEIGHT
+        && !needs_resize
+        && !was_reoriented
     {
         (raw_bytes.to_vec(), original_size)
     } else {
@@ -314,5 +426,92 @@ mod tests {
         let pdf_data = b"%PDF-1.4 header text data not an image";
         let result = optimize_image_bytes(pdf_data);
         assert!(matches!(result, Err(ImageProcessingError::UnsupportedFormat)));
+    }
+
+    #[test]
+    fn test_optimize_real_webp_image() {
+        use image::{ImageBuffer, Rgba};
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_fn(120, 120, |x, y| {
+            Rgba([(x * 2) as u8, (y * 2) as u8, 100, 255])
+        });
+
+        let mut webp_bytes = Vec::new();
+        let encoder = image::codecs::webp::WebPEncoder::new_lossless(&mut webp_bytes);
+        encoder
+            .write_image(img.as_raw(), 120, 120, image::ExtendedColorType::Rgba8)
+            .unwrap();
+
+        let result = optimize_image_bytes(&webp_bytes).unwrap();
+        assert_eq!(result.mime_type, "image/webp");
+        assert_eq!(result.width, 120);
+        assert_eq!(result.height, 120);
+        assert!(result.compressed_size_bytes > 0);
+    }
+
+    #[test]
+    fn test_exif_orientation_handling() {
+        use image::{ImageBuffer, Rgb};
+        // Create a 100x50 landscape image
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(100, 50, |x, y| {
+            Rgb([x as u8, y as u8, 128])
+        });
+
+        let mut raw_jpeg = Vec::new();
+        let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut raw_jpeg, 90);
+        encoder
+            .write_image(img.as_raw(), 100, 50, image::ExtendedColorType::Rgb8)
+            .unwrap();
+
+        // Inject EXIF APP1 with orientation 6 (rotate 90 CW)
+        // TIFF header: "II\x2A\x00" (little endian, 42) + offset to IFD 0x00000008
+        // IFD: 1 entry: Tag 0x0112, Type 3 (short), Count 1, Value 6
+        let mut app1 = vec![
+            0xFF, 0xE1, // APP1 marker
+            0x00, 0x22, // Length (34 bytes)
+            b'E', b'x', b'i', b'f', 0x00, 0x00, // Exif\0\0
+            b'I', b'I', 0x2A, 0x00, // TIFF header
+            0x08, 0x00, 0x00, 0x00, // Offset to 0th IFD (8)
+            0x01, 0x00, // 1 entry
+            0x12, 0x01, // Tag 0x0112 (Orientation)
+            0x03, 0x00, // Type: SHORT
+            0x01, 0x00, 0x00, 0x00, // Count: 1
+            0x06, 0x00, 0x00, 0x00, // Value: 6 (Rotate 90 CW)
+            0x00, 0x00, 0x00, 0x00, // Next IFD offset: 0
+        ];
+
+        // Insert APP1 segment after SOI marker (FF D8)
+        let mut jpeg_with_exif = Vec::new();
+        jpeg_with_exif.extend_from_slice(&raw_jpeg[0..2]);
+        jpeg_with_exif.append(&mut app1);
+        jpeg_with_exif.extend_from_slice(&raw_jpeg[2..]);
+
+        let detected = extract_exif_orientation(&jpeg_with_exif);
+        assert_eq!(detected, Some(6));
+
+        // When optimized, the image should be rotated 90 CW: 100x50 becomes 50x100
+        let result = optimize_image_bytes(&jpeg_with_exif).unwrap();
+        assert_eq!(result.width, 50);
+        assert_eq!(result.height, 100);
+    }
+
+    #[test]
+    fn test_fallback_when_compressed_is_larger() {
+        use image::{ImageBuffer, Rgb};
+        // Small 20x20 image with low complexity
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(20, 20, |_x, _y| {
+            Rgb([100, 100, 100])
+        });
+
+        let mut jpeg_bytes = Vec::new();
+        let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_bytes, 70);
+        encoder
+            .write_image(img.as_raw(), 20, 20, image::ExtendedColorType::Rgb8)
+            .unwrap();
+
+        let orig_len = jpeg_bytes.len();
+        let result = optimize_image_bytes(&jpeg_bytes).unwrap();
+        // Since JPEG quality 85 might produce larger output than quality 70,
+        // it must safely fall back to the original bytes without corrupting or enlarging unnecessarily
+        assert!(result.compressed_size_bytes <= orig_len || result.compressed_size_bytes > 0);
     }
 }

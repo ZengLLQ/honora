@@ -1,5 +1,5 @@
-import React from 'react';
-import { Plus, Inbox } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus } from 'lucide-react';
 import type { PaymentRecord, RecordFilter } from '../types/payment';
 import { RecordItem } from './RecordItem';
 
@@ -24,14 +24,21 @@ export const RecordList: React.FC<RecordListProps> = ({
   onDelete,
   onClearFilter,
 }) => {
-  const isFiltered = Boolean(filter.search || filter.month || filter.from_date || filter.to_date);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const isFiltered = Boolean(
+    filter.search?.trim() ||
+    filter.month?.trim() ||
+    filter.from_date?.trim() ||
+    filter.to_date?.trim()
+  );
 
   if (loading) {
     return (
       <div className="py-24 text-center">
-        <div className="inline-block w-6 h-6 border-2 border-lavender border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs font-mono tracking-widest text-editorial-muted uppercase">
-          Loading payment ledger...
+        <div className="inline-block w-6 h-6 border-2 border-heron-brand border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-xs font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+          Loading...
         </p>
       </div>
     );
@@ -39,65 +46,92 @@ export const RecordList: React.FC<RecordListProps> = ({
 
   if (records.length === 0) {
     return (
-      <div className="py-24 max-w-xl mx-auto px-6 text-center">
-        <div className="w-12 h-12 mx-auto mb-6 flex items-center justify-center bg-white border border-editorial-border">
-          <Inbox className="w-6 h-6 text-editorial-muted" />
-        </div>
+      <div className="py-20 px-6 text-center">
+        <div className="max-w-md mx-auto">
+          {/* Subtle architectural framing icon */}
+          <div className="w-10 h-10 mx-auto mb-5 border border-heron-border bg-heron-surface flex items-center justify-center">
+            <div className="w-2.5 h-2.5 bg-heron-brand" />
+          </div>
 
-        {isFiltered ? (
-          <div>
-            <h3 className="font-display font-bold text-xl text-nearblack tracking-tight mb-2">
-              NO MATCHING RECORDS.
-            </h3>
-            <p className="text-sm text-editorial-muted mb-6">
-              No transactions match your current search or date parameters.
-            </p>
-            <button
-              onClick={onClearFilter}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-mono tracking-wider uppercase bg-white border border-editorial-border hover:border-nearblack text-nearblack transition-colors"
-            >
-              Clear Active Filters
-            </button>
-          </div>
-        ) : (
-          <div>
-            <h3 className="font-display font-bold text-xl text-nearblack tracking-tight mb-2">
-              NO PAYMENT RECORDS YET.
-            </h3>
-            <p className="text-sm text-editorial-muted mb-6">
-              Start recording student transfers with automatically compressed receipts and verified amounts.
-            </p>
-            <button
-              onClick={onNewPayment}
-              className="inline-flex items-center gap-2 px-6 py-3 text-xs font-semibold tracking-wider uppercase bg-lavender hover:bg-lavender-hover text-nearblack transition-colors"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Record First Payment</span>
-            </button>
-          </div>
-        )}
+          {isFiltered ? (
+            <div>
+              <h3 className="font-display font-bold text-lg text-heron-primary tracking-tight mb-2 uppercase">
+                NO MATCHING RECORDS.
+              </h3>
+              <p className="text-xs text-heron-tertiary mb-6 font-sans">
+                No payments found matching the selected criteria.
+              </p>
+              <button
+                type="button"
+                onClick={onClearFilter}
+                className="btn-heron inline-flex items-center gap-2 px-5 py-2.5 text-xs font-sans font-medium tracking-wider uppercase bg-heron-surface hover:bg-heron-primary text-heron-primary hover:text-white border border-heron-border hover:border-heron-primary transition-all duration-200 cursor-pointer shadow-sm"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h3 className="font-display font-bold text-xl text-heron-primary tracking-tight mb-2 uppercase">
+                NO PAYMENTS YET
+              </h3>
+              <p className="text-xs text-heron-tertiary mb-6 font-sans">
+                Start by recording your first tutoring payment.
+              </p>
+              <button
+                type="button"
+                onClick={onNewPayment}
+                aria-label="ADD PAYMENT"
+                className="btn-heron inline-flex items-center gap-2 px-6 py-3 text-xs font-sans tracking-wider uppercase bg-heron-primary hover:bg-heron-brand text-white font-semibold border border-heron-primary hover:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>ADD PAYMENT</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
+  const activeHighlightId =
+    selectedId && records.some((r) => r.id === selectedId) ? selectedId : null;
+
   return (
-    <div className="bg-ivory">
+    <div className="bg-transparent">
+      {/* Table Subhead Bar */}
+      <div className="py-3 border-b border-heron-border bg-heron-subtle/40">
+        <div className="max-w-page mx-auto px-6 lg:px-12 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-heron-brand" />
+            <span className="text-xs font-sans font-bold tracking-wider text-heron-primary uppercase flex items-center gap-1.5">
+              <span>PAYMENT</span>
+              <span className="text-heron-tertiary font-normal">RECORDS</span>
+            </span>
+          </div>
+          <div className="text-xs font-sans text-heron-tertiary tracking-wider font-medium">
+            {records.length} {records.length === 1 ? 'RECORD' : 'RECORDS'}
+          </div>
+        </div>
+      </div>
+
       {/* Table Column Headers (Desktop) */}
-      <div className="hidden md:block border-b border-editorial-border bg-ivory/80 text-[10px] font-mono tracking-widest text-editorial-muted uppercase">
-        <div className="max-w-page mx-auto px-6 lg:px-12 py-3 flex items-center justify-between">
-          <div className="w-1/3">Date & Student</div>
-          <div className="w-1/4">Receipt File</div>
-          <div className="w-1/5 text-right">Transfer Amount</div>
-          <div className="w-1/6 text-right">Actions</div>
+      <div className="hidden md:block border-b border-heron-border bg-heron-subtle/20 text-[10px] font-sans tracking-wider text-heron-tertiary uppercase font-medium">
+        <div className="max-w-page mx-auto px-6 lg:px-12 py-2.5 flex items-center justify-between">
+          <div className="w-5/12">Date & Student</div>
+          <div className="w-3/12">Receipt</div>
+          <div className="w-2/12 text-right">Amount</div>
+          <div className="w-2/12 text-right">Actions</div>
         </div>
       </div>
 
       {/* Record Rows */}
-      <div className="divide-y divide-editorial-border">
+      <div>
         {records.map((record) => (
           <RecordItem
             key={record.id}
             record={record}
+            isHighlighted={record.id === activeHighlightId}
+            onSelect={() => setSelectedId(record.id)}
             onViewReceipt={onViewReceipt}
             onEdit={onEdit}
             onDelete={onDelete}

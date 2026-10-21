@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus } from 'lucide-react';
 import type { PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
 import { getPaymentService } from './services/storageService';
 import { getAvailableMonths } from './utils/formatters';
@@ -30,27 +31,33 @@ export function App() {
   const [viewerRecord, setViewerRecord] = useState<PaymentRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<PaymentRecord | null>(null);
 
-  // Fetch records and summary
-  const refreshData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [fetchedRecords, fetchedSummary, allRecs] = await Promise.all([
-        service.getRecords(filter),
-        service.getSummary(filter),
-        service.getRecords({}),
-      ]);
-      setRecords(fetchedRecords);
-      setSummary(fetchedSummary);
-      setAllRecordsForMonths(allRecs);
-    } catch (err) {
-      console.error('Failed to load payment records:', err);
-    } finally {
-      setLoading(false);
-    }
+  const refreshData = useCallback(() => {
+    let isCancelled = false;
+    Promise.all([
+      service.getRecords(filter),
+      service.getSummary(filter),
+      service.getRecords({}),
+    ])
+      .then(([fetchedRecords, fetchedSummary, allRecs]) => {
+        if (!isCancelled) {
+          setRecords(fetchedRecords);
+          setSummary(fetchedSummary);
+          setAllRecordsForMonths(allRecs);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load payment records:', err);
+        if (!isCancelled) setLoading(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [service, filter]);
 
   useEffect(() => {
-    refreshData();
+    return refreshData();
   }, [refreshData]);
 
   const availableMonths = useMemo(
@@ -81,54 +88,55 @@ export function App() {
     await refreshData();
   };
 
+
   return (
-    <div className="min-h-screen flex flex-col bg-ivory text-nearblack">
-      {/* Top Header */}
+    <div className="min-h-screen flex flex-col bg-heron-bg text-heron-primary selection:bg-heron-brand selection:text-white font-sans">
+      {/* Top Application Header */}
       <Header isTauri={service.isTauri} onNewPayment={handleOpenNewPayment} />
 
-      {/* Hero Editorial Heading */}
-      <section className="bg-ivory pt-12 pb-8 border-b border-editorial-border">
+      {/* Main Page Area 1: Distinctive Heading & Primary Action */}
+      <section className="border-b border-heron-border bg-heron-bg pt-8 sm:pt-12 pb-6">
         <div className="max-w-page mx-auto px-6 lg:px-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2 h-2 bg-lavender" />
-                <span className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase">
-                  FINANCIAL OVERVIEW & AUDIT
+                <span className="w-2 h-2 bg-heron-brand" />
+                <span className="text-[11px] font-sans tracking-wider text-heron-tertiary uppercase font-semibold">
+                  FINANCIAL LEDGER
                 </span>
               </div>
-              <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-nearblack tracking-tighter leading-none">
-                PAYMENT <span className="font-editorial italic font-normal text-nearblack/70">Records</span>.
+              <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
+                PAYMENT RECORDS
               </h1>
-              <p className="mt-3 text-sm text-editorial-muted max-w-xl">
-                Record student bank transfers, automatically compress high-resolution receipts, and preserve transaction details.
+              <p className="mt-2 text-xs sm:text-sm text-heron-secondary max-w-xl font-sans">
+                Personal bank transfer ledger and receipt archive.
               </p>
             </div>
 
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleOpenNewPayment}
-                className="hidden sm:inline-flex items-center gap-2 bg-nearblack hover:bg-nearblack-surface text-ivory font-mono text-xs tracking-wider uppercase px-6 py-3.5 transition-colors border border-editorial-borderDark"
-              >
-                + Add Record
-              </button>
-            </div>
+            <button
+              onClick={handleOpenNewPayment}
+              aria-label="ADD PAYMENT"
+              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>ADD PAYMENT</span>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Financial Summary Bar */}
+      {/* Main Page Area 2: Compact Summary of Payment Activity */}
       <FinancialSummary summary={summary} filter={filter} />
 
-      {/* Filter and Search Bar */}
+      {/* Main Page Area 3: Search and Date Filters */}
       <FilterBar
         filter={filter}
         onChange={setFilter}
         availableMonths={availableMonths}
       />
 
-      {/* Main Records List Section */}
-      <main className="flex-1">
+      {/* Main Page Area 4: Chronological Payment Record List */}
+      <main className="flex-1 bg-heron-bg">
         <RecordList
           records={records}
           filter={filter}
@@ -141,28 +149,26 @@ export function App() {
         />
       </main>
 
-      {/* Editorial Footer */}
-      <footer className="bg-nearblack text-ivory border-t border-editorial-borderDark py-10 mt-auto">
-        <div className="max-w-page mx-auto px-6 lg:px-12 flex flex-col md:flex-row items-center justify-between gap-6 text-xs font-mono text-editorial-muted">
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-lavender rotate-45" />
-            <span className="tracking-widest uppercase text-ivory font-semibold">
-              TUTOR PAYMENT LEDGER
-            </span>
-            <span>•</span>
-            <span>Rust Core & Tauri 2 Desktop • React Web</span>
+      {/* Footer & Attribution (Section 12) */}
+      <footer className="border-t border-heron-border bg-heron-surface/60 py-6 transition-colors">
+        <div className="max-w-page mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-heron-tertiary font-sans">
+            <span className="w-1.5 h-1.5 bg-heron-brand" />
+            <span className="tracking-wider uppercase font-medium">TUTOR PAYMENT RECORDS</span>
           </div>
 
-          <div className="flex items-center gap-6">
-            <span>INTEGER IDR PERSISTENCE</span>
-            <span>AUTO IMAGE OPTIMIZATION</span>
-            <span className="text-lavender">2026 EDITION</span>
+          <div
+            className="text-heron-secondary font-sans tracking-normal"
+            style={{ fontFamily: '"BT Grotesk", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif' }}
+          >
+            Made by JAYCEE 曾令强
           </div>
         </div>
       </footer>
 
       {/* Modals */}
       <PaymentModal
+        key={paymentModalOpen ? (recordToEdit?.id ?? 'new') : 'closed'}
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSaved={refreshData}
@@ -170,6 +176,7 @@ export function App() {
       />
 
       <ReceiptViewerModal
+        key={viewerRecord ? viewerRecord.id : 'none'}
         isOpen={Boolean(viewerRecord)}
         record={viewerRecord}
         onClose={() => setViewerRecord(null)}

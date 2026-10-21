@@ -24,11 +24,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const isEditing = Boolean(recordToEdit);
 
-  // Form states
-  const [studentName, setStudentName] = useState('');
-  const [paymentDate, setPaymentDate] = useState('');
-  const [amountInput, setAmountInput] = useState('');
-  const [note, setNote] = useState('');
+  // Form states initialized directly
+  const [studentName, setStudentName] = useState(recordToEdit?.student_name || '');
+  const [paymentDate, setPaymentDate] = useState(
+    () => recordToEdit?.payment_date || new Date().toISOString().split('T')[0]
+  );
+  const [amountInput, setAmountInput] = useState(
+    recordToEdit?.amount_idr ? recordToEdit.amount_idr.toLocaleString('id-ID') : ''
+  );
+  const [note, setNote] = useState(recordToEdit?.note || '');
 
   // Receipt optimization states
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -42,40 +46,23 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize or reset form on open / recordToEdit change
+  // Load existing receipt if editing a record with receipt
   useEffect(() => {
-    if (!isOpen) return;
-
-    if (recordToEdit) {
-      setStudentName(recordToEdit.student_name);
-      setPaymentDate(recordToEdit.payment_date);
-      setAmountInput(recordToEdit.amount_idr ? recordToEdit.amount_idr.toString() : '');
-      setNote(recordToEdit.note || '');
-      setOptimizationResult(null);
-      setRemoveExistingReceipt(false);
-      setErrorMsg(null);
-
-      if (recordToEdit.receipt_storage_path) {
-        getPaymentService()
-          .getReceiptDataUrl(recordToEdit)
-          .then((url) => setExistingReceiptUrl(url))
-          .catch(() => setExistingReceiptUrl(null));
-      } else {
-        setExistingReceiptUrl(null);
-      }
-    } else {
-      // New record defaults
-      const today = new Date().toISOString().split('T')[0];
-      setStudentName('');
-      setPaymentDate(today);
-      setAmountInput('');
-      setNote('');
-      setOptimizationResult(null);
-      setExistingReceiptUrl(null);
-      setRemoveExistingReceipt(false);
-      setErrorMsg(null);
+    let isCancelled = false;
+    if (recordToEdit?.receipt_storage_path) {
+      getPaymentService()
+        .getReceiptDataUrl(recordToEdit)
+        .then((url) => {
+          if (!isCancelled) setExistingReceiptUrl(url);
+        })
+        .catch(() => {
+          if (!isCancelled) setExistingReceiptUrl(null);
+        });
     }
-  }, [isOpen, recordToEdit]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [recordToEdit]);
 
   if (!isOpen) return null;
 
@@ -109,6 +96,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     if (file) {
       handleFileSelect(file);
     }
+    e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -145,12 +133,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     }
 
     if (!paymentDate) {
-      setErrorMsg('Please select transfer date.');
+      setErrorMsg('Please select date.');
       return;
     }
 
     if (currentAmount <= 0) {
-      setErrorMsg('Please enter a valid transfer amount in IDR.');
+      setErrorMsg('Please enter a valid amount.');
       return;
     }
 
@@ -210,21 +198,19 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-nearblack/80 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-ivory border border-editorial-border shadow-2xl my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-xl bg-heron-bg border border-heron-border shadow-2xl my-8">
         {/* Modal Header */}
-        <div className="bg-nearblack text-ivory px-8 py-6 flex items-center justify-between border-b border-editorial-borderDark">
-          <div>
-            <div className="text-[10px] font-mono tracking-widest text-lavender uppercase mb-1">
-              {isEditing ? 'MODIFY TRANSACTION' : 'NEW TRANSACTION ENTRY'}
-            </div>
-            <h2 className="font-display font-extrabold text-2xl text-white tracking-tight">
-              {isEditing ? 'EDIT PAYMENT RECORD.' : 'RECORD PAYMENT.'}
+        <div className="bg-heron-surface text-heron-primary px-6 sm:px-8 py-5 flex items-center justify-between border-b border-heron-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-2 h-2 bg-heron-brand" />
+            <h2 className="font-display font-bold text-lg sm:text-xl text-heron-primary tracking-tight uppercase">
+              {isEditing ? 'EDIT PAYMENT' : 'ADD PAYMENT'}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-editorial-muted hover:text-white p-2 transition-colors rounded-none"
+            className="text-heron-tertiary hover:text-heron-primary p-1.5 transition-colors cursor-pointer"
             title="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -232,58 +218,58 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
           {errorMsg && (
-            <div className="p-4 bg-status-error/10 border border-status-error/30 text-nearblack flex items-start gap-3 text-xs">
-              <AlertCircle className="w-4 h-4 text-status-error shrink-0 mt-0.5" />
+            <div className="p-3.5 bg-heron-brand/10 border border-heron-brand/30 text-heron-primary flex items-start gap-2.5 text-xs font-sans">
+              <AlertCircle className="w-4 h-4 text-heron-brand shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Student Name */}
           <div>
-            <label className="block text-xs font-mono tracking-widest uppercase text-nearblack mb-2">
-              Student Name <span className="text-lavender">*</span>
+            <label className="block text-xs font-sans tracking-wider uppercase text-heron-primary mb-1.5 font-medium">
+              Student Name <span className="text-heron-brand">*</span>
             </label>
             <input
               type="text"
               required
               autoFocus
-              placeholder="e.g. Budi Santoso"
+              placeholder="Student name"
               value={studentName}
               onChange={(e) => setStudentName(e.target.value)}
-              className="w-full bg-white border border-editorial-border px-4 py-3 text-sm text-nearblack placeholder:text-editorial-muted/60 editorial-focus rounded-none"
+              className="w-full bg-heron-surface border border-heron-border px-3.5 py-2.5 text-sm font-sans text-heron-primary placeholder:text-heron-tertiary/60 focus:border-heron-brand focus:outline-none transition-colors"
             />
           </div>
 
           {/* Row: Date & Amount */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Transfer Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            {/* Date */}
             <div>
-              <label className="block text-xs font-mono tracking-widest uppercase text-nearblack mb-2">
-                Transfer Date <span className="text-lavender">*</span>
+              <label className="block text-xs font-sans tracking-wider uppercase text-heron-primary mb-1.5 font-medium">
+                Date <span className="text-heron-brand">*</span>
               </label>
               <input
                 type="date"
                 required
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="w-full bg-white border border-editorial-border px-4 py-3 text-sm font-mono text-nearblack editorial-focus rounded-none"
+                className="w-full bg-heron-surface border border-heron-border px-3.5 py-2.5 text-sm font-sans text-heron-primary focus:border-heron-brand focus:outline-none transition-colors"
               />
             </div>
 
             {/* Transfer Amount IDR */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-mono tracking-widest uppercase text-nearblack">
-                  Amount in IDR <span className="text-lavender">*</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-sans tracking-wider uppercase text-heron-primary font-medium">
+                  Amount (IDR) <span className="text-heron-brand">*</span>
                 </label>
-                <span className="text-xs font-mono font-bold text-lavender">
+                <span className="text-xs font-sans font-bold font-mono-num text-heron-brand">
                   {formatIDR(currentAmount)}
                 </span>
               </div>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-xs text-editorial-muted">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-sans font-medium text-xs text-heron-tertiary">
                   Rp
                 </span>
                 <input
@@ -292,7 +278,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   placeholder="1.500.000"
                   value={amountInput}
                   onChange={handleAmountChange}
-                  className="w-full bg-white border border-editorial-border pl-12 pr-4 py-3 text-sm font-mono font-bold text-nearblack editorial-focus rounded-none"
+                  className="w-full bg-heron-surface border border-heron-border pl-10 pr-3.5 py-2.5 text-sm font-sans font-bold font-mono-num text-heron-primary focus:border-heron-brand focus:outline-none transition-colors"
                 />
               </div>
             </div>
@@ -300,13 +286,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {/* Receipt Upload & Compression Section */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-mono tracking-widest uppercase text-nearblack">
-                Transfer Receipt <span className="text-editorial-muted font-normal text-[11px]">(JPEG, PNG, WebP)</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-sans tracking-wider uppercase text-heron-primary font-medium">
+                Receipt
               </label>
-              <span className="text-[11px] font-mono text-editorial-muted">
-                AUTO-COMPRESSED
-              </span>
             </div>
 
             <input
@@ -319,50 +302,43 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
             {/* Optimizing in progress state */}
             {isOptimizing && (
-              <div className="p-8 border-2 border-dashed border-lavender bg-lavender/5 text-center">
-                <div className="inline-block w-6 h-6 border-2 border-lavender border-t-transparent rounded-full animate-spin mb-3" />
-                <p className="text-xs font-mono tracking-widest text-lavender font-bold uppercase">
-                  OPTIMIZING RECEIPT...
-                </p>
-                <p className="text-[11px] text-editorial-muted mt-1">
-                  Enforcing max dimensions and lossless compression for financial legibility.
+              <div className="p-6 border border-dashed border-heron-brand bg-heron-brand/5 text-center">
+                <div className="inline-block w-5 h-5 border-2 border-heron-brand border-t-transparent rounded-full animate-spin mb-2" />
+                <p className="text-xs font-sans tracking-wider text-heron-brand font-semibold uppercase">
+                  PROCESSING RECEIPT
                 </p>
               </div>
             )}
 
             {/* Display newly optimized receipt */}
             {!isOptimizing && optimizationResult && (
-              <div className="p-4 bg-white border border-editorial-border">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
+              <div className="p-3.5 bg-heron-surface border border-heron-border">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
                     <img
                       src={`data:${optimizationResult.mime_type};base64,${optimizationResult.data_base64}`}
                       alt="Optimized preview"
-                      className="w-16 h-20 object-cover border border-editorial-border shadow-sm"
+                      className="w-14 h-18 object-cover border border-heron-border shadow-sm"
                     />
                     <div>
-                      <div className="flex items-center gap-1.5 text-status-success font-mono text-xs font-semibold">
+                      <div className="flex items-center gap-1.5 text-status-success font-sans text-xs font-semibold">
                         <Check className="w-3.5 h-3.5" />
-                        <span>RECEIPT OPTIMIZED</span>
+                        <span>RECEIPT SAVED</span>
                       </div>
-                      <div className="mt-1 text-xs font-mono text-nearblack">
+                      <div className="mt-0.5 text-xs font-sans text-heron-primary font-medium">
                         {formatBytes(optimizationResult.original_size_bytes)} →{' '}
-                        <span className="font-bold text-lavender">
+                        <span className="font-bold text-heron-brand">
                           {formatBytes(optimizationResult.compressed_size_bytes)}
-                        </span>{' '}
-                        · {optimizationResult.savings_percentage}% smaller
-                      </div>
-                      <div className="text-[10px] font-mono text-editorial-muted mt-0.5">
-                        {optimizationResult.width} × {optimizationResult.height} px · {optimizationResult.mime_type}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2 text-editorial-muted hover:text-nearblack border border-editorial-border hover:border-nearblack transition-colors"
+                      className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-primary border border-heron-border hover:border-heron-primary transition-colors cursor-pointer"
                       title="Replace receipt"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
@@ -370,7 +346,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     <button
                       type="button"
                       onClick={handleClearReceipt}
-                      className="p-2 text-editorial-muted hover:text-status-error border border-editorial-border hover:border-status-error transition-colors"
+                      className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-brand border border-heron-border hover:border-heron-brand transition-colors cursor-pointer"
                       title="Remove receipt"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -381,31 +357,37 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             {/* Display existing receipt on edit if not replacing */}
-            {!isOptimizing && !optimizationResult && existingReceiptUrl && !removeExistingReceipt && (
-              <div className="p-4 bg-white border border-editorial-border flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <img
-                    src={existingReceiptUrl}
-                    alt="Current receipt"
-                    className="w-16 h-20 object-cover border border-editorial-border shadow-sm"
-                  />
+            {!isOptimizing && !optimizationResult && recordToEdit?.receipt_storage_path && !removeExistingReceipt && (
+              <div className="p-3.5 bg-heron-surface border border-heron-border flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {existingReceiptUrl ? (
+                    <img
+                      src={existingReceiptUrl}
+                      alt="Current receipt"
+                      className="w-14 h-18 object-cover border border-heron-border shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-14 h-18 bg-heron-subtle border border-heron-border flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-heron-brand" />
+                    </div>
+                  )}
                   <div>
-                    <span className="text-xs font-mono text-nearblack font-semibold flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-lavender" />
-                      CURRENT RECEIPT PRESERVED
+                    <span className="text-xs font-sans text-heron-primary font-semibold flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-heron-brand" />
+                      RECEIPT ATTACHED
                     </span>
                     {recordToEdit?.receipt_compressed_size_bytes ? (
-                      <p className="text-xs font-mono text-editorial-muted mt-1">
-                        Stored size: {formatBytes(recordToEdit.receipt_compressed_size_bytes)}
+                      <p className="text-xs font-sans text-heron-tertiary mt-0.5 font-medium">
+                        {formatBytes(recordToEdit.receipt_compressed_size_bytes)}
                       </p>
                     ) : null}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 text-editorial-muted hover:text-nearblack border border-editorial-border hover:border-nearblack transition-colors"
+                    className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-primary border border-heron-border hover:border-heron-primary transition-colors cursor-pointer"
                     title="Change receipt"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -413,7 +395,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   <button
                     type="button"
                     onClick={handleClearReceipt}
-                    className="p-2 text-editorial-muted hover:text-status-error border border-editorial-border hover:border-status-error transition-colors"
+                    className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-brand border border-heron-border hover:border-heron-brand transition-colors cursor-pointer"
                     title="Remove receipt"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -423,19 +405,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             )}
 
             {/* Empty upload box */}
-            {!isOptimizing && !optimizationResult && (!existingReceiptUrl || removeExistingReceipt) && (
+            {!isOptimizing && !optimizationResult && (!recordToEdit?.receipt_storage_path || removeExistingReceipt) && (
               <div
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onClick={() => fileInputRef.current?.click()}
-                className="p-8 border-2 border-dashed border-editorial-border hover:border-lavender bg-white hover:bg-white/80 cursor-pointer transition-colors text-center"
+                className="p-6 border border-dashed border-heron-border hover:border-heron-brand bg-heron-surface hover:bg-heron-surface/80 cursor-pointer transition-colors text-center"
               >
-                <Upload className="w-6 h-6 mx-auto mb-2 text-editorial-muted" />
-                <p className="text-xs font-mono uppercase text-nearblack tracking-wide font-medium">
-                  Drop receipt image here, or <span className="text-lavender underline">browse file</span>
-                </p>
-                <p className="text-[11px] text-editorial-muted mt-1">
-                  Supports JPEG, PNG, WebP up to 20 MB. Automatically compressed on select.
+                <Upload className="w-5 h-5 mx-auto mb-1.5 text-heron-tertiary" />
+                <p className="text-xs font-sans uppercase text-heron-primary tracking-wide font-medium">
+                  Drop receipt image here, or <span className="text-heron-brand underline">browse</span>
                 </p>
               </div>
             )}
@@ -443,40 +422,41 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
           {/* Optional Note */}
           <div>
-            <label className="block text-xs font-mono tracking-widest uppercase text-nearblack mb-2">
-              Note <span className="text-editorial-muted font-normal text-[11px]">(Optional)</span>
+            <label className="block text-xs font-sans tracking-wider uppercase text-heron-primary mb-1.5 font-medium">
+              Note
             </label>
             <textarea
               rows={2}
-              placeholder="e.g. Physics & Math tutoring package (Grade 12)"
+              placeholder="Add note..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full bg-white border border-editorial-border px-4 py-3 text-sm text-nearblack placeholder:text-editorial-muted/60 editorial-focus rounded-none"
+              className="w-full bg-heron-surface border border-heron-border px-3.5 py-2.5 text-sm font-sans text-heron-primary placeholder:text-heron-tertiary/60 focus:border-heron-brand focus:outline-none transition-colors"
             />
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 border-t border-editorial-border flex items-center justify-end gap-4">
+          <div className="pt-4 border-t border-heron-border flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-6 py-3 text-xs font-mono tracking-wider uppercase text-editorial-muted hover:text-nearblack border border-editorial-border hover:border-nearblack bg-white transition-colors rounded-none"
+              className="btn-heron px-5 py-2.5 text-xs font-sans font-medium tracking-wider uppercase text-heron-secondary hover:text-heron-primary border border-heron-border hover:border-heron-primary bg-heron-surface transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || isOptimizing}
-              className="px-8 py-3 text-xs font-semibold tracking-wider uppercase bg-lavender hover:bg-lavender-hover text-nearblack transition-colors disabled:opacity-50 flex items-center gap-2 rounded-none editorial-focus"
+              aria-label={isEditing ? 'Save Changes' : 'ADD PAYMENT'}
+              className="btn-heron px-6 py-2.5 text-xs font-sans font-semibold tracking-wider uppercase bg-heron-primary hover:bg-heron-brand text-white border border-heron-primary hover:border-heron-brand transition-all duration-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-3.5 h-3.5 border-2 border-nearblack border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>{isEditing ? 'Save Changes' : 'Record Payment'}</span>
+                <span>{isEditing ? 'Save Changes' : 'ADD PAYMENT'}</span>
               )}
             </button>
           </div>

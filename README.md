@@ -2,7 +2,14 @@
 
 A production-ready application for private tutors to record, organize, audit, and review student bank transfer receipts.
 
-Designed with a distinctive editorial visual identity inspired by [`zengllq.blog`](https://zengllq.blog/): oversized bold typography, warm ivory and near-black surfaces, thin horizontal grid lines, restrained lavender accents, and purposeful motion.
+Designed with a distinctive visual identity inspired by [`Heron AI`](https://heronaiapp.com/): BT Grotesk typography, warm parchment background with subtle texture, hairline structural borders, deep charcoal typography, Heron brand indigo accents (`#3B3BE6`), and restrained purposeful motion.
+
+---
+
+## Documentation
+
+- **[Technical Architecture & Specification](docs/ARCHITECTURE.md)**: Deep dive into the dual-target system topology, IPC bridge, SQLite/IndexedDB persistence, automatic image optimization pipeline, and security model.
+- **[Deployment Guide](docs/DEPLOYMENT.md)**: Comprehensive guide for deploying to **Vercel** and compiling standalone Tauri 2 native desktop binaries.
 
 ---
 
@@ -22,13 +29,13 @@ Designed with a distinctive editorial visual identity inspired by [`zengllq.blog
   - Prevents size ballooning: if compressed output exceeds the original, the original is preserved.
   - Live preview with real-time compression ratio display (e.g., `4.2 MB → 820 KB · 80.5% smaller`).
 - **Financial Ledger & Filtering**:
-  - Lifetime total collected, transaction count, and filtered period subtotals.
+  - Direct 3-metric overview: **Total Payments**, **Total Received** (all-time), and **Active Date Range** amount.
   - Live search by student name (case-insensitive).
   - Quick month selector (`October 2026`, `September 2026`, etc.).
   - Custom date range filter (`From Date` – `To Date`) with one-click reset.
 - **High-Resolution Receipt Inspector**:
   - Image preview with interactive zoom controls (50% to 250%, Reset).
-  - Displays original size, compressed size, dimensions, MIME format, and verification status.
+  - Preserves entire receipt without top/left margin clipping when zoomed.
   - Direct download and quick edit/delete actions.
 - **Dual Platform Architecture**:
   - **Desktop (Tauri 2 + Rust)**: SQLite local database with `rusqlite` bundled, local receipt filesystem storage in OS app data directory, native Rust image processing with `image` crate.
@@ -36,28 +43,31 @@ Designed with a distinctive editorial visual identity inspired by [`zengllq.blog
 
 ---
 
-## 2. Design System & Tokens
+## 2. Design System & Tokens (Heron AI Direction)
 
 | Token | Hex / Value | Purpose |
 |---|---|---|
-| Warm Ivory | `#F1EDE2` | Primary light background surfaces and ledger rows |
-| Near-Black | `#101116` | Top navigation, footer, display typography, and modals |
-| Deep Charcoal | `#171821` | Secondary dark surfaces and inspection stage |
-| Lavender | `#8982E8` | Primary accent, CTA buttons, active badges, focus rings |
-| Muted Gray | `#85848A` | Secondary text and small uppercase metadata labels |
-| Light Gray | `#D4D0C7` | Hairline dividers and borders |
-| White | `#FFFFFF` | Form inputs, contrast cards, and modal containers |
+| Primary Background (`heron-bg`) | `#F5F5ED` | Heron warm parchment page background with subtle texture |
+| Surface Background (`heron-surface`) | `#FFFFFF` | Form inputs, contrast cards, and modal containers |
+| Inset Surface (`heron-subtle`) | `#EFEFE8` | Subhead bars, secondary badges, and row hover states |
+| Primary Text (`heron-primary`) | `#0F0F12` | Heron deep charcoal headings, primary copy, and solid CTA buttons |
+| Secondary Text (`heron-secondary`) | `#52525B` | Graphite secondary text, notes, and labels |
+| Tertiary / Muted (`heron-tertiary`) | `#71717A` | Granite muted metadata, dates, and column headers |
+| Hairline Border (`heron-border`) | `#E4E4DC` | Fine 1px architectural grid lines and dividers |
+| Brand Accent (`heron-brand`) | `#3B3BE6` | Heron signature indigo accent, active states, focus rings |
+| Typography | `BT Grotesk` | Primary typeface across all headings, body, numerals, labels |
 
 ---
 
 ## 3. Tech Stack
 
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons.
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons, BT Grotesk font family.
 - **Desktop Core**: Rust 1.98, Tauri 2.12, Rusqlite 0.31 (bundled SQLite), Image 0.25 (JPEG, PNG, WebP encoders/decoders), UUID v4, Chrono.
-- **Web Persistence**: Browser IndexedDB (`TutorPaymentRecordsDB`) with dedicated stores for structured records and receipt blobs.
+- **Web Persistence**: Browser IndexedDB (`TutorPaymentRecordsDB`) with dedicated stores for structured records and binary receipt blobs.
+- **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
-  - **Rust**: 12 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG encoding, SQLite CRUD, and financial filtering.
-  - **Vitest**: 27 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, and React component interactions.
+  - **Rust**: 15 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, and financial filtering.
+  - **Vitest**: 43 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, and React component interactions.
 
 ---
 
@@ -95,22 +105,39 @@ npm run tauri dev
 ```bash
 cd src-tauri
 cargo build --release
-# Executable located at src-tauri/target/release/app.exe
+# Standalone executable located at src-tauri/target/release/app.exe
 ```
 
 ---
 
-## 5. Verification & Tests
+## 5. Deploying to Vercel
+
+The application is pre-configured for instant deployment on Vercel:
+
+1. **Via Vercel Dashboard**:
+   - Push to GitHub: `git push -u origin master`
+   - Import the repository at [vercel.com/new](https://vercel.com/new).
+   - Framework preset: `Vite`, Build command: `npm run build`, Output directory: `dist`.
+   - Click **Deploy**.
+
+2. **Via Vercel CLI**:
+   ```bash
+   npm i -g vercel
+   vercel --prod
+   ```
+
+---
+
+## 6. Verification & Tests
 
 ### Run Rust Backend Unit Tests
 ```bash
-cd src-tauri
-cargo test
-# All 12 unit tests pass
+cargo test --manifest-path src-tauri/Cargo.toml
+# All 15 unit tests pass
 ```
 
 ### Run Frontend & UI Tests
 ```bash
-npm run test:run # or npx vitest run
-# All 27 Vitest unit and integration tests pass
+npm test # or npx vitest run
+# All 43 Vitest unit and integration tests pass
 ```

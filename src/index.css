@@ -1,79 +1,180 @@
 @import "tailwindcss";
 
-@theme {
-  --color-ivory: #F1EDE2;
-  --color-ivory-light: #F8F6F0;
-  --color-ivory-dark: #E7E2D5;
-
-  --color-nearblack: #101116;
-  --color-nearblack-surface: #171821;
-  --color-nearblack-elevated: #1F202B;
-  --color-nearblack-card: #1B1C25;
-
-  --color-lavender: #8982E8;
-  --color-lavender-hover: #9F99EE;
-  --color-lavender-dim: rgba(137, 130, 232, 0.15);
-
-  --color-editorial-muted: #85848A;
-  --color-editorial-border: #D4D0C7;
-  --color-editorial-borderDark: #252733;
-  --color-editorial-borderDarkLight: #323444;
-  --color-editorial-subtle: #B3B0A8;
-
-  --color-status-success: #4ADE80;
-  --color-status-error: #F87171;
-  --color-status-warning: #FBBF24;
-
-  --font-display: 'Syne', 'Space Grotesk', sans-serif;
-  --font-editorial: 'Newsreader', serif;
-  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+/* BT Grotesk Primary Font Family (Local assets from Heron AI) */
+@font-face {
+  font-family: 'BT Grotesk';
+  src: url('/fonts/BTGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
-body {
-  background-color: #F1EDE2;
-  color: #101116;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+@font-face {
+  font-family: 'BT Grotesk';
+  src: url('/fonts/BTGrotesk-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BT Grotesk';
+  src: url('/fonts/BTGrotesk-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BT Grotesk';
+  src: url('/fonts/BTGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GeistMono';
+  src: url('/fonts/GeistMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-heron-bg: #F5F5ED;
+  --color-heron-surface: #FFFFFF;
+  --color-heron-subtle: #ECECE4;
+  --color-heron-primary: #282828;
+  --color-heron-secondary: #414140;
+  --color-heron-tertiary: #72726F;
+  --color-heron-granite: #626260;
+  --color-heron-border: #B3B3AF;
+  --color-heron-border-subtle: #D5D5CF;
+  --color-heron-border-dark: #3A3A38;
+  --color-heron-brand: #FA3600;
+  --color-heron-brand-hover: #E03000;
+  --color-heron-brand-dim: rgba(250, 54, 0, 0.10);
+  --color-heron-selection: #E15C46;
+  --color-heron-dark-card: #1F1F1E;
+
+  /* Backward-compatible token mappings updated to Heron AI palette */
+  --color-ivory: #F5F5ED;
+  --color-ivory-light: #FFFFFF;
+  --color-ivory-dark: #ECECE4;
+
+  --color-nearblack: #282828;
+  --color-nearblack-surface: #1F1F1E;
+  --color-nearblack-elevated: #333331;
+  --color-nearblack-card: #282828;
+
+  --color-lavender: #FA3600;
+  --color-lavender-hover: #E03000;
+  --color-lavender-dim: rgba(250, 54, 0, 0.10);
+
+  --color-editorial-muted: #72726F;
+  --color-editorial-border: #B3B3AF;
+  --color-editorial-borderDark: #3A3A38;
+  --color-editorial-borderDarkLight: #4A4A48;
+  --color-editorial-subtle: #B3B3AF;
+
+  --color-status-success: #15803D;
+  --color-status-error: #FA3600;
+  --color-status-warning: #B45309;
+
+  --font-display: 'BT Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'BT Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'GeistMono', 'BT Grotesk', monospace;
+  --font-cjk: 'BT Grotesk', 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+
+:root {
+  --size-border: max(1px, 0.1rem);
+}
+
+html {
+  background-color: #F5F5ED;
+  color: #282828;
+  font-family: 'BT Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.02em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  background-color: #F5F5ED;
+  background-image: url('/bg.svg');
+  background-repeat: repeat;
+  background-size: 124px 124px;
+  color: #282828;
+  min-height: 100vh;
+}
+
 ::selection {
-  background-color: #8982E8;
+  background-color: #E15C46;
   color: #FFFFFF;
 }
 
 .max-w-page {
-  max-width: 1560px;
+  max-width: 1440px;
 }
 
-/* Hairline dividers */
+/* Heron Hairline borders */
 .hairline-b {
-  border-bottom: 1px solid #D4D0C7;
+  border-bottom: var(--size-border) solid #B3B3AF;
 }
 
 .hairline-t {
-  border-top: 1px solid #D4D0C7;
+  border-top: var(--size-border) solid #B3B3AF;
 }
 
-.hairline-dark-b {
-  border-bottom: 1px solid #252733;
+.hairline-l {
+  border-left: var(--size-border) solid #B3B3AF;
 }
 
-.hairline-dark-t {
-  border-top: 1px solid #252733;
+.hairline-r {
+  border-right: var(--size-border) solid #B3B3AF;
+}
+
+.hairline-all {
+  border: var(--size-border) solid #B3B3AF;
 }
 
 .font-mono-num {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'BT Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' on, 'lnum' on;
 }
 
 .editorial-focus:focus-visible {
-  outline: 2px solid #8982E8;
+  outline: 2px solid #FA3600;
   outline-offset: 2px;
 }
 
+/* Heron signature button hover effect */
+.btn-heron {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.btn-heron:hover {
+  transform: translateY(-1px);
+}
+
+.btn-heron:active {
+  transform: translateY(0);
+}
+
+/* Heron subtle dashed line */
+.line-dash-h {
+  border-bottom: 1px dashed #B3B3AF;
+}
+
+.line-dash-v {
+  border-right: 1px dashed #B3B3AF;
+}
+
+/* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

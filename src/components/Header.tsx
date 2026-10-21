@@ -1,54 +1,41 @@
 import React from 'react';
-import { Plus, ShieldCheck, Laptop } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 interface HeaderProps {
-  isTauri: boolean;
+  isTauri?: boolean;
   onNewPayment: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isTauri, onNewPayment }) => {
+export const Header: React.FC<HeaderProps> = ({ isTauri: _isTauri, onNewPayment }) => {
   return (
-    <header className="bg-nearblack text-ivory border-b border-editorial-borderDark sticky top-0 z-30 transition-colors">
-      <div className="max-w-page mx-auto px-6 lg:px-12 h-20 flex items-center justify-between">
-        {/* Brand / Logo */}
-        <div className="flex items-center gap-4">
-          <div className="w-3 h-3 bg-lavender rounded-none rotate-45" />
-          <div>
-            <h1 className="font-display font-extrabold text-xl tracking-tight text-white flex items-center gap-2">
-              TUTOR <span className="font-editorial italic font-normal text-lavender text-2xl">Payment</span> RECORDS
-            </h1>
-            <p className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase">
-              Financial Receipt Ledger
-            </p>
+    <header className="bg-heron-bg/90 backdrop-blur-md text-heron-primary border-b border-heron-border sticky top-0 z-40 transition-colors">
+      <div className="max-w-page mx-auto px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
+        {/* Brand / Application Identifier */}
+        <div className="flex items-center gap-3">
+          {/* Heron-inspired precision geometric badge */}
+          <div className="relative w-7 h-7 border border-heron-border bg-heron-surface flex items-center justify-center">
+            <div className="w-2 h-2 bg-heron-brand" />
+            <div className="absolute -top-[1px] -left-[1px] w-1.5 h-1.5 border-t border-l border-heron-primary" />
+            <div className="absolute -bottom-[1px] -right-[1px] w-1.5 h-1.5 border-b border-r border-heron-primary" />
+          </div>
+
+          <div className="font-display font-bold text-sm sm:text-base tracking-tight text-heron-primary flex items-center gap-1.5 uppercase leading-none">
+            <span className="font-bold">TUTOR</span>
+            <span className="text-heron-tertiary font-normal">PAYMENT</span>
+            <span className="font-bold">RECORDS</span>
           </div>
         </div>
 
-        {/* Right side: Environment Badge & Primary Action */}
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div
-            className="hidden sm:flex items-center gap-2 px-3 py-1 bg-nearblack-surface border border-editorial-borderDark text-[11px] font-mono tracking-wider text-editorial-muted"
-            title={isTauri ? 'Running as native Tauri desktop application' : 'Running as client-side persistent web application'}
-          >
-            {isTauri ? (
-              <>
-                <Laptop className="w-3.5 h-3.5 text-lavender" />
-                <span>DESKTOP (TAURI 2)</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-3.5 h-3.5 text-status-success" />
-                <span>WEB PERSISTENT (INDEXEDDB)</span>
-              </>
-            )}
-            <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse ml-1" />
-          </div>
-
+        {/* Right side: Primary Action */}
+        <div className="flex items-center gap-4">
           <button
             onClick={onNewPayment}
-            className="flex items-center gap-2 bg-lavender hover:bg-lavender-hover text-nearblack font-semibold text-xs tracking-wider uppercase px-5 py-3 transition-colors duration-150 active:scale-[0.98] editorial-focus"
+            aria-label="ADD PAYMENT"
+            title="Record Payment"
+            className="btn-heron group relative inline-flex items-center gap-2 bg-heron-primary hover:bg-heron-brand text-white text-xs font-sans font-semibold tracking-wider uppercase px-4 sm:px-5 py-2.5 sm:py-3 border border-heron-primary hover:border-heron-brand transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Record Payment</span>
+            <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200 text-white" />
+            <span>ADD PAYMENT</span>
           </button>
         </div>
       </div>

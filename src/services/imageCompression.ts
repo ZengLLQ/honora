@@ -100,21 +100,46 @@ export async function optimizeReceiptInBrowser(file: File): Promise<Optimization
   const mime = await detectMimeFromBytes(file);
   const originalSize = file.size;
 
-  // Load image into an HTMLImageElement
-  const objectUrl = URL.createObjectURL(file);
-  const img = new Image();
+  let origW = 0;
+  let origH = 0;
+  let sourceImage: ImageBitmap | HTMLImageElement;
 
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error('Corrupted or unreadable image file.'));
-    img.src = objectUrl;
-  });
-
-  const origW = img.naturalWidth || img.width;
-  const origH = img.naturalHeight || img.height;
+  if (typeof createImageBitmap === 'function') {
+    try {
+      sourceImage = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      origW = sourceImage.width;
+      origH = sourceImage.height;
+    } catch {
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Corrupted or unreadable image file.'));
+        img.src = objectUrl;
+      });
+      URL.revokeObjectURL(objectUrl);
+      origW = img.naturalWidth || img.width;
+      origH = img.naturalHeight || img.height;
+      sourceImage = img;
+    }
+  } else {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Corrupted or unreadable image file.'));
+      img.src = objectUrl;
+    });
+    URL.revokeObjectURL(objectUrl);
+    origW = img.naturalWidth || img.width;
+    origH = img.naturalHeight || img.height;
+    sourceImage = img;
+  }
 
   if (origW === 0 || origH === 0) {
-    URL.revokeObjectURL(objectUrl);
+    if ('close' in sourceImage && typeof sourceImage.close === 'function') {
+      sourceImage.close();
+    }
     throw new Error('Image has invalid dimensions.');
   }
 
@@ -127,22 +152,46 @@ export async function optimizeReceiptInBrowser(file: File): Promise<Optimization
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
-    URL.revokeObjectURL(objectUrl);
+    if ('close' in sourceImage && typeof sourceImage.close === 'function') {
+      sourceImage.close();
+    }
     throw new Error('Could not initialize canvas context for image processing.');
   }
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-  URL.revokeObjectURL(objectUrl);
+  ctx.drawImage(sourceImage, 0, 0, targetW, targetH);
+  if ('close' in sourceImage && typeof sourceImage.close === 'function') {
+    sourceImage.close();
+  }
 
-  // Determine output format
-  const outputFormat = mime === 'image/png' ? 'image/png' : 'image/jpeg';
-  const quality = mime === 'image/png' ? undefined : JPEG_QUALITY;
+  // Determine output format and quality
+  let outputFormat: string = mime;
+  let quality: number | undefined = undefined;
 
-  const compressedBlob = await new Promise<Blob | null>((resolve) => {
+  if (mime === 'image/jpeg') {
+    outputFormat = 'image/jpeg';
+    quality = JPEG_QUALITY;
+  } else if (mime === 'image/webp') {
+    outputFormat = 'image/webp';
+    quality = 0.85;
+  } else {
+    outputFormat = 'image/png';
+    quality = undefined;
+  }
+
+  let compressedBlob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((blob) => resolve(blob), outputFormat, quality);
   });
+
+  // Fallback to JPEG if browser canvas cannot encode WebP
+  if (!compressedBlob && outputFormat === 'image/webp') {
+    outputFormat = 'image/jpeg';
+    quality = JPEG_QUALITY;
+    compressedBlob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), outputFormat, quality);
+    });
+  }
 
   if (!compressedBlob) {
     throw new Error('Failed to compress image.');

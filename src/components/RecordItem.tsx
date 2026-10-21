@@ -5,6 +5,8 @@ import { formatDateDisplay, formatIDR, formatBytes } from '../utils/formatters';
 
 interface RecordItemProps {
   record: PaymentRecord;
+  isHighlighted?: boolean;
+  onSelect?: () => void;
   onViewReceipt: (record: PaymentRecord) => void;
   onEdit: (record: PaymentRecord) => void;
   onDelete: (record: PaymentRecord) => void;
@@ -12,6 +14,8 @@ interface RecordItemProps {
 
 export const RecordItem: React.FC<RecordItemProps> = ({
   record,
+  isHighlighted = false,
+  onSelect,
   onViewReceipt,
   onEdit,
   onDelete,
@@ -19,87 +23,121 @@ export const RecordItem: React.FC<RecordItemProps> = ({
   const hasReceipt = Boolean(record.receipt_storage_path);
 
   return (
-    <div className="group border-b border-editorial-border hover:bg-white/80 transition-colors duration-150">
-      <div className="max-w-page mx-auto px-6 lg:px-12 py-5 lg:py-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div
+      onClick={onSelect}
+      className={`group border-b border-heron-border transition-colors duration-200 cursor-pointer ${
+        isHighlighted
+          ? 'bg-heron-surface border-l-4 border-l-heron-brand shadow-sm'
+          : 'bg-transparent hover:bg-heron-subtle/80'
+      }`}
+    >
+      <div className="max-w-page mx-auto px-6 lg:px-12 py-4 sm:py-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           {/* Column 1: Date & Student Name */}
-          <div className="md:w-1/3 flex items-start gap-4">
-            <div className="w-2.5 h-2.5 mt-2 rounded-none bg-editorial-border group-hover:bg-lavender transition-colors" />
-            <div>
-              <div className="text-[11px] font-mono tracking-widest text-editorial-muted uppercase mb-1">
+          <div className="md:w-5/12 flex items-start gap-3.5">
+            <div
+              className={`w-1.5 h-1.5 mt-2 transition-colors duration-200 ${
+                isHighlighted
+                  ? 'bg-heron-brand'
+                  : 'bg-heron-border group-hover:bg-heron-brand'
+              }`}
+            />
+            <div className="min-w-0">
+              <div className="text-[11px] font-sans font-medium tracking-wider uppercase text-heron-tertiary mb-0.5">
                 {formatDateDisplay(record.payment_date)}
               </div>
-              <h3 className="font-display font-bold text-lg text-nearblack tracking-tight group-hover:text-nearblack">
+              <h3 className="font-display font-bold text-base sm:text-lg text-heron-primary tracking-tight transition-colors group-hover:text-heron-primary">
                 {record.student_name}
               </h3>
               {record.note && (
-                <p className="mt-1 text-xs text-editorial-muted line-clamp-1 italic font-editorial">
+                <p className="mt-0.5 text-xs text-heron-secondary line-clamp-1 italic font-sans">
                   {record.note}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Column 2: Receipt Indicator & Optimization Info */}
-          <div className="md:w-1/4">
+          {/* Column 2: Receipt Indicator */}
+          <div className="md:w-3/12 flex items-center">
             {hasReceipt ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <button
-                  onClick={() => onViewReceipt(record)}
-                  className="flex items-center gap-2 text-xs font-mono tracking-wider text-nearblack hover:text-lavender transition-colors py-1 px-2.5 bg-ivory border border-editorial-border hover:border-lavender group-hover:bg-white"
-                  title="Click to inspect receipt details"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewReceipt(record);
+                  }}
+                  className="btn-heron inline-flex items-center gap-1.5 text-xs font-sans font-medium tracking-wide py-1 px-2.5 bg-heron-surface border border-heron-border hover:border-heron-brand text-heron-primary hover:text-heron-brand transition-colors cursor-pointer"
+                  title="View receipt"
                 >
-                  <FileText className="w-3.5 h-3.5 text-lavender" />
-                  <span className="font-medium">RECEIPT ATTACHED</span>
+                  <FileText className="w-3.5 h-3.5 text-heron-brand shrink-0" />
+                  <span className="font-semibold">RECEIPT ATTACHED</span>
                 </button>
                 {record.receipt_compressed_size_bytes ? (
-                  <span className="text-[11px] font-mono text-editorial-muted">
+                  <span className="text-[11px] font-sans text-heron-tertiary font-medium">
                     {formatBytes(record.receipt_compressed_size_bytes)}
                   </span>
                 ) : null}
               </div>
             ) : (
-              <div className="text-[11px] font-mono text-editorial-muted/70 tracking-wider">
+              <div className="inline-flex items-center px-2 py-0.5 text-[10px] font-sans font-medium tracking-wider text-heron-tertiary border border-heron-border/50 bg-heron-subtle/50">
                 NO RECEIPT
               </div>
             )}
           </div>
 
           {/* Column 3: Amount in IDR */}
-          <div className="md:w-1/5 md:text-right">
-            <div className="text-[10px] font-mono tracking-widest text-editorial-muted uppercase md:hidden mb-0.5">
+          <div className="md:w-2/12 md:text-right">
+            <div className="text-[10px] font-sans font-medium tracking-wider uppercase md:hidden text-heron-tertiary mb-0.5">
               AMOUNT
             </div>
-            <div className="font-display font-extrabold text-xl lg:text-2xl text-nearblack font-mono-num tracking-tight">
+            <div className="font-display font-bold text-lg sm:text-xl text-heron-primary font-mono-num tracking-tight">
               {formatIDR(record.amount_idr)}
             </div>
           </div>
 
           {/* Column 4: Quick Actions */}
-          <div className="md:w-1/6 flex items-center justify-start md:justify-end gap-2 pt-2 md:pt-0">
+          <div className="md:w-2/12 flex items-center justify-start md:justify-end gap-1 pt-1 md:pt-0">
             {hasReceipt && (
               <button
-                onClick={() => onViewReceipt(record)}
-                className="p-2 text-editorial-muted hover:text-nearblack hover:bg-ivory border border-transparent hover:border-editorial-border transition-colors rounded-none"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewReceipt(record);
+                }}
+                className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-primary hover:bg-heron-surface border border-transparent hover:border-heron-border transition-colors cursor-pointer"
                 title="View receipt"
               >
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3.5 h-3.5" />
               </button>
             )}
             <button
-              onClick={() => onEdit(record)}
-              className="p-2 text-editorial-muted hover:text-nearblack hover:bg-ivory border border-transparent hover:border-editorial-border transition-colors rounded-none"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(record);
+              }}
+              className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-primary hover:bg-heron-surface border border-transparent hover:border-heron-border transition-colors cursor-pointer"
               title="Edit record"
             >
-              <Edit3 className="w-4 h-4" />
+              <Edit3 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => onDelete(record)}
-              className="p-2 text-editorial-muted hover:text-status-error hover:bg-status-error/10 border border-transparent hover:border-status-error/30 transition-colors rounded-none"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(record);
+              }}
+              className="btn-heron p-1.5 text-heron-tertiary hover:text-heron-brand hover:bg-heron-brand/10 border border-transparent hover:border-heron-brand/30 transition-colors cursor-pointer"
               title="Delete record"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
+
+            {/* Heron subtle arrow prompt */}
+            <span className="hidden md:inline-block font-sans text-xs text-heron-tertiary group-hover:text-heron-brand transition-all duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ml-1">
+              ↗
+            </span>
           </div>
         </div>
       </div>

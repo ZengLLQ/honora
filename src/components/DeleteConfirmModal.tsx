@@ -31,43 +31,36 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-nearblack/80 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-ivory border border-editorial-border shadow-2xl p-6 md:p-8">
-        <div className="flex items-start justify-between mb-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm">
+      <div className="w-full max-w-md bg-heron-bg border border-heron-border shadow-2xl p-6 sm:p-8">
+        <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-status-error/15 text-status-error">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="p-2 border border-heron-brand/30 bg-heron-brand/10 text-heron-brand">
+              <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] font-mono tracking-widest text-status-error uppercase font-bold">
-                CONFIRM DELETION
-              </span>
-              <h3 className="font-display font-bold text-xl text-nearblack tracking-tight">
+              <h3 className="font-display font-bold text-lg text-heron-primary tracking-tight uppercase">
                 DELETE RECORD?
               </h3>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-editorial-muted hover:text-nearblack p-1 transition-colors"
+            className="text-heron-tertiary hover:text-heron-primary p-1 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <p className="text-sm text-nearblack/80 mb-6">
-          This will permanently remove the payment record and any attached optimized receipt for:
-        </p>
-
         {/* Record info box */}
-        <div className="bg-white border border-editorial-border p-4 mb-6 space-y-1.5 font-mono text-xs">
-          <div className="text-base font-display font-bold text-nearblack">
+        <div className="bg-heron-surface border border-heron-border p-4 mb-6 space-y-1 font-sans text-xs">
+          <div className="text-base font-display font-bold text-heron-primary">
             {record.student_name}
           </div>
-          <div className="text-lavender font-bold text-sm">
+          <div className="text-heron-brand font-bold text-sm font-mono-num">
             {formatIDR(record.amount_idr)}
           </div>
-          <div className="text-editorial-muted text-[11px]">
+          <div className="text-heron-tertiary text-[11px] font-medium">
             {formatDateDisplay(record.payment_date)}
           </div>
         </div>
@@ -78,7 +71,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="px-5 py-2.5 text-xs font-mono tracking-wider uppercase text-editorial-muted hover:text-nearblack border border-editorial-border hover:border-nearblack bg-white transition-colors rounded-none"
+            className="btn-heron px-5 py-2.5 text-xs font-sans font-medium tracking-wider uppercase text-heron-secondary hover:text-heron-primary border border-heron-border hover:border-heron-primary bg-heron-surface transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -86,7 +79,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-6 py-2.5 text-xs font-mono tracking-wider uppercase bg-status-error hover:bg-status-error/90 text-white font-semibold transition-colors disabled:opacity-50 flex items-center gap-2 rounded-none"
+            className="btn-heron px-6 py-2.5 text-xs font-sans tracking-wider uppercase bg-heron-brand hover:bg-heron-brandHover text-white font-semibold transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
           >
             {isDeleting ? (
               <>
@@ -94,7 +87,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
                 <span>Deleting...</span>
               </>
             ) : (
-              <span>Confirm Delete</span>
+              <span>Delete</span>
             )}
           </button>
         </div>

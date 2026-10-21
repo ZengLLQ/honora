@@ -83,7 +83,7 @@ pub fn create_payment_record(
     let now = Utc::now().to_rfc3339();
 
     let mut receipt_storage_path = None;
-    let mut receipt_mime = payload.receipt_mime_type;
+    let mut receipt_mime = payload.receipt_mime_type.clone();
     let mut orig_size = payload.receipt_original_size_bytes;
     let mut comp_size = payload.receipt_compressed_size_bytes;
     let mut width = payload.receipt_width;
@@ -96,29 +96,50 @@ pub fn create_payment_record(
                 .decode(base64_data)
                 .map_err(|e| format!("Invalid receipt image data: {}", e))?;
 
-            // Always run optimization to ensure limits and compression
-            let opt = image_optimizer::optimize_image_bytes(&raw_bytes)
-                .map_err(|e| format!("Receipt optimization failed: {}", e))?;
+            // If the image was already optimized and metadata provided by client,
+            // preserve the true original size and skip redundant lossy re-encoding!
+            let (final_bytes, final_mime, final_orig, final_comp, final_w, final_h) =
+                if let (Some(orig), Some(comp), Some(w), Some(h)) = (
+                    payload.receipt_original_size_bytes,
+                    payload.receipt_compressed_size_bytes,
+                    payload.receipt_width,
+                    payload.receipt_height,
+                ) {
+                    let m = receipt_mime
+                        .clone()
+                        .unwrap_or_else(|| "image/jpeg".to_string());
+                    (raw_bytes, m, orig, comp, w, h)
+                } else {
+                    let opt = image_optimizer::optimize_image_bytes(&raw_bytes)
+                        .map_err(|e| format!("Receipt optimization failed: {}", e))?;
+                    let opt_bytes = BASE64
+                        .decode(&opt.data_base64)
+                        .map_err(|e| format!("Encoding error: {}", e))?;
+                    (
+                        opt_bytes,
+                        opt.mime_type,
+                        opt.original_size_bytes as i64,
+                        opt.compressed_size_bytes as i64,
+                        opt.width,
+                        opt.height,
+                    )
+                };
 
-            let opt_bytes = BASE64
-                .decode(&opt.data_base64)
-                .map_err(|e| format!("Encoding error: {}", e))?;
-
-            let ext = match opt.mime_type.as_str() {
+            let ext = match final_mime.as_str() {
                 "image/png" => "png",
                 "image/webp" => "webp",
                 _ => "jpg",
             };
 
-            let path = storage::save_receipt_file(&state.app_data_dir, &record_id, ext, &opt_bytes)
+            let path = storage::save_receipt_file(&state.app_data_dir, &record_id, ext, &final_bytes)
                 .map_err(|e| format!("Failed to save receipt file: {}", e))?;
 
             receipt_storage_path = Some(path);
-            receipt_mime = Some(opt.mime_type);
-            orig_size = Some(opt.original_size_bytes as i64);
-            comp_size = Some(opt.compressed_size_bytes as i64);
-            width = Some(opt.width);
-            height = Some(opt.height);
+            receipt_mime = Some(final_mime);
+            orig_size = Some(final_orig);
+            comp_size = Some(final_comp);
+            width = Some(final_w);
+            height = Some(final_h);
         }
     }
 
@@ -198,28 +219,49 @@ pub fn update_payment_record(
                 .decode(base64_data)
                 .map_err(|e| format!("Invalid receipt image data: {}", e))?;
 
-            let opt = image_optimizer::optimize_image_bytes(&raw_bytes)
-                .map_err(|e| format!("Receipt optimization failed: {}", e))?;
+            let (final_bytes, final_mime, final_orig, final_comp, final_w, final_h) =
+                if let (Some(orig), Some(comp), Some(w), Some(h)) = (
+                    payload.receipt_original_size_bytes,
+                    payload.receipt_compressed_size_bytes,
+                    payload.receipt_width,
+                    payload.receipt_height,
+                ) {
+                    let m = payload
+                        .receipt_mime_type
+                        .clone()
+                        .unwrap_or_else(|| "image/jpeg".to_string());
+                    (raw_bytes, m, orig, comp, w, h)
+                } else {
+                    let opt = image_optimizer::optimize_image_bytes(&raw_bytes)
+                        .map_err(|e| format!("Receipt optimization failed: {}", e))?;
+                    let opt_bytes = BASE64
+                        .decode(&opt.data_base64)
+                        .map_err(|e| format!("Encoding error: {}", e))?;
+                    (
+                        opt_bytes,
+                        opt.mime_type,
+                        opt.original_size_bytes as i64,
+                        opt.compressed_size_bytes as i64,
+                        opt.width,
+                        opt.height,
+                    )
+                };
 
-            let opt_bytes = BASE64
-                .decode(&opt.data_base64)
-                .map_err(|e| format!("Encoding error: {}", e))?;
-
-            let ext = match opt.mime_type.as_str() {
+            let ext = match final_mime.as_str() {
                 "image/png" => "png",
                 "image/webp" => "webp",
                 _ => "jpg",
             };
 
-            let path = storage::save_receipt_file(&state.app_data_dir, &payload.id, ext, &opt_bytes)
+            let path = storage::save_receipt_file(&state.app_data_dir, &payload.id, ext, &final_bytes)
                 .map_err(|e| format!("Failed to save receipt file: {}", e))?;
 
             receipt_storage_path = Some(path);
-            receipt_mime = Some(opt.mime_type);
-            orig_size = Some(opt.original_size_bytes as i64);
-            comp_size = Some(opt.compressed_size_bytes as i64);
-            width = Some(opt.width);
-            height = Some(opt.height);
+            receipt_mime = Some(final_mime);
+            orig_size = Some(final_orig);
+            comp_size = Some(final_comp);
+            width = Some(final_w);
+            height = Some(final_h);
         }
     }
 

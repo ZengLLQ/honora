@@ -18,6 +18,7 @@ export interface IPaymentService {
   deleteRecord(id: string): Promise<void>;
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
+  close?(): Promise<void>;
 }
 
 export function isTauriEnvironment(): boolean {
@@ -108,101 +109,12 @@ class WebIndexedDBPaymentService implements IPaymentService {
         }
       };
 
-      request.onsuccess = async () => {
+      request.onsuccess = () => {
         const db = request.result;
-        await this.seedDemoDataIfEmpty(db);
         resolve(db);
       };
 
       request.onerror = () => reject(request.error);
-    });
-  }
-
-  private async seedDemoDataIfEmpty(db: IDBDatabase): Promise<void> {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_RECORDS, 'readonly');
-      const store = tx.objectStore(STORE_RECORDS);
-      const countReq = store.count();
-
-      countReq.onsuccess = () => {
-        if (countReq.result === 0) {
-          const writeTx = db.transaction(STORE_RECORDS, 'readwrite');
-          const writeStore = writeTx.objectStore(STORE_RECORDS);
-
-          const initialRecords: PaymentRecord[] = [
-            {
-              id: 'demo-1',
-              student_name: 'Budi Santoso',
-              payment_date: '2026-10-18',
-              amount_idr: 1500000,
-              receipt_storage_path: 'demo-receipt-1',
-              receipt_mime_type: 'image/jpeg',
-              receipt_original_size_bytes: 4200000,
-              receipt_compressed_size_bytes: 820000,
-              receipt_width: 1440,
-              receipt_height: 2560,
-              note: 'Physics & Calculus tutoring — 8 sessions package',
-              created_at: new Date('2026-10-18T09:30:00Z').toISOString(),
-              updated_at: new Date('2026-10-18T09:30:00Z').toISOString(),
-            },
-            {
-              id: 'demo-2',
-              student_name: 'Siti Rahma',
-              payment_date: '2026-10-15',
-              amount_idr: 1200000,
-              receipt_storage_path: 'demo-receipt-2',
-              receipt_mime_type: 'image/png',
-              receipt_original_size_bytes: 3100000,
-              receipt_compressed_size_bytes: 650000,
-              receipt_width: 1080,
-              receipt_height: 1920,
-              note: 'Chemistry preparation for national exam',
-              created_at: new Date('2026-10-15T14:20:00Z').toISOString(),
-              updated_at: new Date('2026-10-15T14:20:00Z').toISOString(),
-            },
-            {
-              id: 'demo-3',
-              student_name: 'Dewi Lestari',
-              payment_date: '2026-10-02',
-              amount_idr: 900000,
-              receipt_storage_path: null,
-              receipt_mime_type: null,
-              receipt_original_size_bytes: null,
-              receipt_compressed_size_bytes: null,
-              receipt_width: null,
-              receipt_height: null,
-              note: 'English grammar & essay writing — 4 sessions',
-              created_at: new Date('2026-10-02T11:00:00Z').toISOString(),
-              updated_at: new Date('2026-10-02T11:00:00Z').toISOString(),
-            },
-            {
-              id: 'demo-4',
-              student_name: 'Alexander Pratama',
-              payment_date: '2026-09-28',
-              amount_idr: 1800000,
-              receipt_storage_path: 'demo-receipt-4',
-              receipt_mime_type: 'image/jpeg',
-              receipt_original_size_bytes: 5400000,
-              receipt_compressed_size_bytes: 980000,
-              receipt_width: 1600,
-              receipt_height: 2400,
-              note: 'High school competition mathematics',
-              created_at: new Date('2026-09-28T16:45:00Z').toISOString(),
-              updated_at: new Date('2026-09-28T16:45:00Z').toISOString(),
-            },
-          ];
-
-          for (const rec of initialRecords) {
-            writeStore.put(rec);
-          }
-
-          writeTx.oncomplete = () => resolve();
-          writeTx.onerror = () => resolve();
-        } else {
-          resolve();
-        }
-      };
-      countReq.onerror = () => resolve();
     });
   }
 
@@ -315,14 +227,16 @@ class WebIndexedDBPaymentService implements IPaymentService {
 
     if (payload.receipt_base64 && payload.receipt_base64.trim()) {
       storagePath = `receipt_${id}`;
-      // Save receipt in receipts store
+      const mime = payload.receipt_mime_type || 'image/jpeg';
+      const binaryData = base64ToUint8Array(payload.receipt_base64);
+      // Save receipt raw binary bytes in receipts store (no base64 strings in database)
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
         const store = tx.objectStore(STORE_RECEIPTS);
         const req = store.put({
           id: storagePath,
-          mime: payload.receipt_mime_type || 'image/jpeg',
-          base64: payload.receipt_base64,
+          mime,
+          data: binaryData,
         });
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
@@ -376,8 +290,12 @@ class WebIndexedDBPaymentService implements IPaymentService {
 
     if (payload.remove_receipt) {
       if (storagePath) {
-        const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
-        tx.objectStore(STORE_RECEIPTS).delete(storagePath);
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
+          const req = tx.objectStore(STORE_RECEIPTS).delete(storagePath!);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
       }
       storagePath = null;
       mime = null;
@@ -387,8 +305,12 @@ class WebIndexedDBPaymentService implements IPaymentService {
       height = null;
     } else if (payload.receipt_base64 && payload.receipt_base64.trim()) {
       if (storagePath) {
-        const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
-        tx.objectStore(STORE_RECEIPTS).delete(storagePath);
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
+          const req = tx.objectStore(STORE_RECEIPTS).delete(storagePath!);
+          req.onsuccess = () => resolve();
+          req.onerror = () => reject(req.error);
+        });
       }
       storagePath = `receipt_${payload.id}`;
       mime = payload.receipt_mime_type || 'image/jpeg';
@@ -397,13 +319,14 @@ class WebIndexedDBPaymentService implements IPaymentService {
       width = payload.receipt_width || null;
       height = payload.receipt_height || null;
 
+      const binaryData = base64ToUint8Array(payload.receipt_base64);
       await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
         const store = tx.objectStore(STORE_RECEIPTS);
         const req = store.put({
           id: storagePath,
           mime,
-          base64: payload.receipt_base64,
+          data: binaryData,
         });
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
@@ -443,8 +366,12 @@ class WebIndexedDBPaymentService implements IPaymentService {
     const db = await this.dbPromise;
 
     if (existing.receipt_storage_path) {
-      const txReceipt = db.transaction(STORE_RECEIPTS, 'readwrite');
-      txReceipt.objectStore(STORE_RECEIPTS).delete(existing.receipt_storage_path);
+      await new Promise<void>((resolve, reject) => {
+        const txReceipt = db.transaction(STORE_RECEIPTS, 'readwrite');
+        const req = txReceipt.objectStore(STORE_RECEIPTS).delete(existing.receipt_storage_path!);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
     }
 
     return new Promise((resolve, reject) => {
@@ -464,11 +391,6 @@ class WebIndexedDBPaymentService implements IPaymentService {
   async getReceiptDataUrl(record: PaymentRecord): Promise<string> {
     if (!record.receipt_storage_path) return '';
 
-    // If demo receipt, generate a clean SVG receipt placeholder
-    if (record.receipt_storage_path.startsWith('demo-receipt')) {
-      return createSampleReceiptSvg(record);
-    }
-
     const db = await this.dbPromise;
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_RECEIPTS, 'readonly');
@@ -476,7 +398,17 @@ class WebIndexedDBPaymentService implements IPaymentService {
       const req = store.get(record.receipt_storage_path!);
 
       req.onsuccess = () => {
-        if (req.result && req.result.base64) {
+        if (!req.result) {
+          resolve('');
+          return;
+        }
+        if (req.result.data && (req.result.data instanceof Uint8Array || ArrayBuffer.isView(req.result.data))) {
+          const view = req.result.data instanceof Uint8Array
+            ? req.result.data
+            : new Uint8Array(req.result.data.buffer, req.result.data.byteOffset, req.result.data.byteLength);
+          const base64 = uint8ArrayToBase64(view);
+          resolve(`data:${req.result.mime || 'image/jpeg'};base64,${base64}`);
+        } else if (req.result.base64) {
           resolve(`data:${req.result.mime || 'image/jpeg'};base64,${req.result.base64}`);
         } else {
           resolve('');
@@ -485,35 +417,30 @@ class WebIndexedDBPaymentService implements IPaymentService {
       req.onerror = () => resolve('');
     });
   }
+
+  async close(): Promise<void> {
+    const db = await this.dbPromise;
+    db.close();
+  }
 }
 
-/**
- * Creates a clean SVG placeholder receipt for seeded demo records.
- */
-function createSampleReceiptSvg(record: PaymentRecord): string {
-  const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800" style="background:#FAF8F5; font-family:sans-serif;">
-  <rect x="20" y="20" width="560" height="760" rx="8" fill="#FFFFFF" stroke="#D4D0C7" stroke-width="2"/>
-  <rect x="20" y="20" width="560" height="100" fill="#101116"/>
-  <text x="50" y="65" fill="#8982E8" font-size="14" font-weight="bold" letter-spacing="3">BANK TRANSFER RECEIPT</text>
-  <text x="50" y="95" fill="#FFFFFF" font-size="20" font-weight="bold">TRANSFER SUCCESSFUL</text>
-  <line x1="50" y1="160" x2="550" y2="160" stroke="#E5E3DC" stroke-dasharray="4"/>
-  <text x="50" y="200" fill="#85848A" font-size="12" letter-spacing="1.5">RECIPIENT / STUDENT</text>
-  <text x="50" y="230" fill="#101116" font-size="22" font-weight="bold">${record.student_name}</text>
-  <text x="50" y="290" fill="#85848A" font-size="12" letter-spacing="1.5">TRANSFER AMOUNT</text>
-  <text x="50" y="330" fill="#101116" font-size="32" font-weight="bold">Rp ${(record.amount_idr || 0).toLocaleString('id-ID')}</text>
-  <text x="50" y="390" fill="#85848A" font-size="12" letter-spacing="1.5">TRANSACTION DATE</text>
-  <text x="50" y="420" fill="#101116" font-size="18">${record.payment_date}</text>
-  <text x="50" y="480" fill="#85848A" font-size="12" letter-spacing="1.5">REFERENCE NUMBER</text>
-  <text x="50" y="510" fill="#101116" font-size="16" font-family="monospace">TRX-${record.id.toUpperCase()}-IDR</text>
-  <line x1="50" y1="570" x2="550" y2="570" stroke="#E5E3DC" stroke-dasharray="4"/>
-  <text x="50" y="620" fill="#85848A" font-size="12" letter-spacing="1.5">STATUS</text>
-  <rect x="50" y="635" width="120" height="30" rx="4" fill="#E8F5E9"/>
-  <text x="75" y="656" fill="#2E7D32" font-size="13" font-weight="bold">COMPLETED</text>
-  <text x="50" y="730" fill="#B3B0A8" font-size="11">OFFICIAL DIGITAL TRANSFER RECORD • VERIFIED</text>
-</svg>
-  `.trim();
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // -------------------------------------------------------------
@@ -530,4 +457,8 @@ export function getPaymentService(): IPaymentService {
     }
   }
   return serviceInstance;
+}
+
+export function resetServiceInstanceForTesting(): void {
+  serviceInstance = null;
 }
