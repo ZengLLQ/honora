@@ -85,7 +85,7 @@ class TauriPaymentService implements IPaymentService {
 // -------------------------------------------------------------
 // WEB INDEXEDDB CLIENT SERVICE IMPLEMENTATION
 // -------------------------------------------------------------
-const DB_NAME = 'TutorPaymentRecordsDB';
+const DB_NAME = 'HonoraDB';
 const DB_VERSION = 1;
 const STORE_RECORDS = 'payment_records';
 const STORE_RECEIPTS = 'receipt_blobs';

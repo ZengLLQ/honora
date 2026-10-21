@@ -12,7 +12,7 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     localStorage.clear();
 
     await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.deleteDatabase('TutorPaymentRecordsDB');
+      const req = indexedDB.deleteDatabase('HonoraDB');
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
       req.onblocked = () => resolve();

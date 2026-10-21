@@ -1,4 +1,4 @@
-# Tutor Payment Records Application
+# Honora — Tutor Payment Records
 
 A production-ready application for private tutors to record, organize, audit, and review student bank transfer receipts.
 
@@ -10,14 +10,14 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
 
 Download the official desktop application with offline SQLite database, receipt archive management, and automatic image compression:
 
-[![Latest Release](https://img.shields.io/github/v/release/ZengLLQ/tutor-payment-records?color=3B3BE6&label=Latest%20Release)](https://github.com/ZengLLQ/tutor-payment-records/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/ZengLLQ/honora?color=3B3BE6&label=Latest%20Release)](https://github.com/ZengLLQ/honora/releases/latest)
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Tutor.Payment.Records_0.1.0_universal.dmg](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Tutor.Payment.Records_universal.app.tar.gz](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Tutor.Payment.Records_0.1.0_x64-setup.exe](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Tutor.Payment.Records_0.1.0_x64_en-US.msi](https://github.com/ZengLLQ/tutor-payment-records/releases/download/v0.1.0/Tutor.Payment.Records_0.1.0_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_0.1.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_0.1.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_0.1.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -134,18 +134,18 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Tutor Payment Records_0.1.0_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_0.1.0_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
-- **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.tutor.paymentrecords\`.
+- **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.app\`.
 
 #### macOS Version (`.dmg` & `.app`)
 Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Tutor Payment Records_0.1.0_universal.dmg`
-- **Installation**: Open `.dmg` and drag `Tutor Payment Records.app` into `/Applications`.
-- **Storage**: Data and receipts stored in `~/Library/Application Support/com.tutor.paymentrecords/`.
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_0.1.0_universal.dmg`
+- **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
+- **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.app/`.
 
 #### Automated GitHub Actions CI/CD
 A complete release workflow (`.github/workflows/release.yml`) compiles Windows and macOS installers on GitHub hosted runners upon pushing version tags (`v*`) or master releases.

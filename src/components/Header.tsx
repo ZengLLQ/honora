@@ -15,10 +15,8 @@ export const Header: React.FC<HeaderProps> = ({ isTauri: _isTauri, onNewPayment 
         <div className="flex items-center gap-3">
           <BrandLogo size="md" />
 
-          <div className="font-display font-bold text-sm sm:text-base tracking-tight text-heron-primary flex items-center gap-1.5 uppercase leading-none">
-            <span className="font-bold">TUTOR</span>
-            <span className="text-heron-tertiary font-normal">PAYMENT</span>
-            <span className="font-bold">RECORDS</span>
+          <div className="font-display font-bold text-base sm:text-lg tracking-tight text-heron-primary flex items-center gap-2 uppercase leading-none">
+            <span className="font-bold tracking-widest text-heron-primary">HONORA</span>
           </div>
         </div>
 

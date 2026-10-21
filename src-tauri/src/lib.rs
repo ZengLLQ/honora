@@ -30,14 +30,38 @@ pub fn run() {
             let app_data_dir = app
                 .path()
                 .app_data_dir()
-                .unwrap_or_else(|_| PathBuf::from("./tutor_payment_data"));
+                .unwrap_or_else(|_| PathBuf::from("./honora_data"));
 
             if !app_data_dir.exists() {
                 fs::create_dir_all(&app_data_dir)
                     .expect("Failed to create application data directory");
             }
 
+            // Seamless backward-compatible migration from legacy data directory if needed
             let db_path = app_data_dir.join("records.sqlite");
+            if !db_path.exists() {
+                if let Some(parent) = app_data_dir.parent() {
+                    for legacy_name in ["com.tutor.paymentrecords", "com.honora.app"] {
+                        let old_dir = parent.join(legacy_name);
+                        let old_db = old_dir.join("records.sqlite");
+                        if old_db.exists() {
+                            let _ = fs::copy(&old_db, &db_path);
+                            let old_receipts = old_dir.join("receipts");
+                            let new_receipts = app_data_dir.join("receipts");
+                            if old_receipts.exists() && !new_receipts.exists() {
+                                let _ = fs::create_dir_all(&new_receipts);
+                                if let Ok(entries) = fs::read_dir(&old_receipts) {
+                                    for entry in entries.flatten() {
+                                        let _ = fs::copy(entry.path(), new_receipts.join(entry.file_name()));
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
             let conn = Connection::open(&db_path).expect("Failed to open SQLite database");
             db::init_db(&conn).expect("Failed to initialize database schema");
 

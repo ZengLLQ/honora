@@ -1,6 +1,6 @@
-# Tutor Payment Records — Technical Architecture & System Specification
+# Honora — Technical Architecture & System Specification
 
-A comprehensive technical architecture document for the **Tutor Payment Records** application, covering system boundaries, component topologies, data models, IPC protocols, persistent storage abstraction, automated image optimization, and Vercel cloud deployment.
+A comprehensive technical architecture document for the **Honora** application, covering system boundaries, component topologies, data models, IPC protocols, persistent storage abstraction, automated image optimization, and Vercel cloud deployment.
 
 ---
 
@@ -8,9 +8,9 @@ A comprehensive technical architecture document for the **Tutor Payment Records*
 
 Private tutoring operations require a reliable, personal accounting ledger for recording student bank transfers, archiving proof-of-payment receipts, and tracking revenue across customizable timeframes. Standard enterprise accounting suites or generic SaaS templates often introduce excessive cognitive overhead, subscription lock-in, and unnecessary complexities.
 
-**Tutor Payment Records** addresses this through a dual-target architecture:
+**Honora** addresses this through a dual-target architecture:
 1. **Desktop Native Application**: Powered by **Tauri 2** and **Rust**, leveraging an embedded SQLite database (`rusqlite`) and operating-system-level persistent filesystem storage with native Rust image processing (`image` crate).
-2. **Web Persistent Application**: Powered by **React 19**, **TypeScript**, and **Vite**, utilizing client-side persistent **IndexedDB** with dual object stores (`payment_records` and `receipt_blobs`) and in-browser Canvas image optimization. Fully optimized for zero-config global deployment on **Vercel**.
+2. **Web Persistent Application**: Powered by **React 19**, **TypeScript**, and **Vite**, utilizing client-side persistent **IndexedDB** (`HonoraDB`) with dual object stores (`payment_records` and `receipt_blobs`) and in-browser Canvas image optimization. Fully optimized for zero-config global deployment on **Vercel**.
 
 Visual styling follows the **Heron AI** design direction ([`heronaiapp.com`](https://heronaiapp.com/)), emphasizing typographic clarity with **BT Grotesk**, a warm parchment aesthetic (`#F5F5ED`), hairline architectural dividers (`#E4E4DC`), indigo brand accents (`#3B3BE6`), and strict adherence to a **Minimal Information Policy**.
 
@@ -56,7 +56,7 @@ The application is structured into decoupled UI, domain service, and platform-sp
 │     TAURI 2 (DESKTOP TIER)    │ │        WEB CLIENT TIER               │
 │                               │ │                                      │
 │ • IPC Invoke Bridge           │ │ • HTML5 Canvas Compressor            │
-│ • Rust Backend Engine         │ │ • IndexedDB (TutorPaymentRecordsDB)  │
+│ • Rust Backend Engine         │ │ • IndexedDB (HonoraDB)               │
 │ • rusqlite Embedded SQLite    │ │   ├── STORE: payment_records         │
 │ • image-rs Image Optimization │ │   └── STORE: receipt_blobs           │
 │ • OS Local Filesystem Archive │ │ • Zero-leakage client sandbox        │
@@ -91,13 +91,13 @@ The runtime environment is detected via `isTauriEnvironment()`, which inspects t
 
 ### 3.2 Desktop Storage Implementation (SQLite + OS Disk)
 
-- **Database**: Embedded SQLite database initialized inside the OS user application data directory (`%APPDATA%\com.tutor.paymentrecords\tutor_payments.db` on Windows).
+- **Database**: Embedded SQLite database initialized inside the OS user application data directory (`%APPDATA%\com.honora.app\records.sqlite` on Windows).
 - **Receipt Filesystem**: Uploaded receipts are saved as binary files directly to disk under a dedicated `receipts/` directory within the application data path.
 - **Transactional Integrity**: Creating or deleting records executes within SQLite atomic transactions, ensuring associated receipt files on disk are removed safely without orphaned references.
 
 ### 3.3 Web Storage Implementation (IndexedDB Binary Blobs)
 
-- **Database**: Browser-native IndexedDB database named `TutorPaymentRecordsDB` (Version 1).
+- **Database**: Browser-native IndexedDB database named `HonoraDB` (Version 1).
 - **Separation of Concerns**:
   - `STORE_RECORDS`: Stores structured JSON payment records indexed by `student_name` and `payment_date`.
   - `STORE_RECEIPTS`: Stores raw binary image bytes as `Uint8Array` indexed by `receipt_storage_path`.

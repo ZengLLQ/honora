@@ -134,7 +134,7 @@ export function App() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 bg-heron-brand" />
                 <span className="text-[11px] font-sans tracking-wider text-heron-tertiary uppercase font-semibold">
-                  FINANCIAL LEDGER
+                  HONORA · FINANCIAL LEDGER
                 </span>
               </div>
               <div className="flex items-center gap-3.5 sm:gap-4.5">
@@ -144,7 +144,7 @@ export function App() {
                 </h1>
               </div>
               <p className="mt-2 text-xs sm:text-sm text-heron-secondary max-w-xl font-sans">
-                Personal bank transfer ledger and receipt archive.
+                Personal tutor payment ledger and bank transfer receipt archive.
               </p>
             </div>
 

@@ -1,10 +1,10 @@
 [package]
 name = "app"
 version = "0.1.0"
-description = "Tutor Payment Records Desktop Application"
-authors = ["Tutor Payment Records"]
+description = "Honora Desktop Application"
+authors = ["Honora"]
 license = "MIT"
-repository = "https://github.com/ZengLLQ/tutor-payment-records"
+repository = "https://github.com/ZengLLQ/honora"
 edition = "2024"
 rust-version = "1.90"
 

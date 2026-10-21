@@ -385,9 +385,7 @@ describe('UI Components', () => {
     it('renders clean brand title and triggers onNewPayment callback without leaking technical details', () => {
       const onNewPayment = vi.fn();
       render(<Header isTauri={false} onNewPayment={onNewPayment} />);
-      expect(screen.getByText('TUTOR')).toBeInTheDocument();
-      expect(screen.getByText('PAYMENT')).toBeInTheDocument();
-      expect(screen.getByText('RECORDS')).toBeInTheDocument();
+      expect(screen.getByText('HONORA')).toBeInTheDocument();
       expect(screen.getByTestId('brand-logo')).toBeInTheDocument();
       expect(screen.queryByText('Financial Receipt Ledger')).not.toBeInTheDocument();
 

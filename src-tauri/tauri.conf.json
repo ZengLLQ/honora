@@ -1,9 +1,9 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Tutor Payment Records",
+  "productName": "Honora",
   "version": "0.1.0",
-  "identifier": "com.tutor.paymentrecords",
-  "mainBinaryName": "tutor-payment-records",
+  "identifier": "com.honora.desktop",
+  "mainBinaryName": "honora",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -13,7 +13,7 @@
   "app": {
     "windows": [
       {
-        "title": "Tutor Payment Records",
+        "title": "Honora",
         "width": 1440,
         "height": 900,
         "minWidth": 800,
@@ -29,11 +29,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "publisher": "Tutor Payment Records",
-    "copyright": "Copyright © 2026 Tutor Payment Records. All rights reserved.",
+    "publisher": "Honora",
+    "copyright": "Copyright © 2026 Honora. All rights reserved.",
     "category": "Finance",
-    "shortDescription": "A desktop application for private tutors to record, organize, audit, and review student bank transfer receipts.",
-    "longDescription": "Tutor Payment Records provides offline-first payment tracking, local SQLite persistence, automatic receipt compression, and financial auditing designed for private tutors.",
+    "shortDescription": "Honora — A desktop application for private tutors to record, organize, audit, and review student bank transfer receipts.",
+    "longDescription": "Honora provides offline-first payment tracking, local SQLite persistence, automatic receipt compression, and financial auditing designed for private tutors.",
     "icon": [
       "icons/32x32.png",
       "icons/64x64.png",

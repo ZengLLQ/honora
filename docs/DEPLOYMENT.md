@@ -1,27 +1,27 @@
-# Tutor Payment Records — Deployment Guide
+# Honora — Deployment Guide
 
-This guide provides end-to-end instructions for deploying the **Tutor Payment Records** application to **Vercel** as a high-performance web application, as well as compiling the native desktop binaries using **Tauri 2** and **Rust**.
+This guide provides end-to-end instructions for deploying the **Honora** application to **Vercel** as a high-performance web application, as well as compiling the native desktop binaries using **Tauri 2** and **Rust**.
 
 ---
 
 ## 1. Deploying to Vercel (Web Version)
 
-The web version of **Tutor Payment Records** is built with React 19, TypeScript, and Vite. It persists payment records and receipts securely using client-side **IndexedDB**, meaning it requires zero external database servers to be instantly functional, fast, and globally accessible via Vercel's Edge Network.
+The web version of **Honora** is built with React 19, TypeScript, and Vite. It persists payment records and receipts securely using client-side **IndexedDB** (`HonoraDB`), meaning it requires zero external database servers to be instantly functional, fast, and globally accessible via Vercel's Edge Network.
 
 ### Method A: Deploy via GitHub & Vercel Dashboard (Recommended)
 
 1. **Push your repository to GitHub**:
-   Ensure your code is pushed to your GitHub repository (e.g., `ZengLLQ/tutor-payment-records`).
+   Ensure your code is pushed to your GitHub repository (e.g., `ZengLLQ/honora`).
    ```bash
    git add .
-   git commit -m "feat: complete tutor payment records application"
+   git commit -m "feat: complete Honora application"
    git push -u origin master
    ```
 
 2. **Import Project into Vercel**:
    - Navigate to [vercel.com/new](https://vercel.com/new).
    - Sign in with your GitHub account (`ZengLLQ`).
-   - Select the `tutor-payment-records` repository and click **Import**.
+   - Select the `honora` repository and click **Import**.
 
 3. **Configure Project Settings**:
    Vercel automatically detects Vite with the included `vercel.json` configuration:
@@ -32,7 +32,7 @@ The web version of **Tutor Payment Records** is built with React 19, TypeScript,
 
 4. **Deploy**:
    - Click **Deploy**.
-   - Vercel will run `tsc -b && vite build` and deploy your application to a global edge domain (e.g. `https://tutor-payment-records.vercel.app`).
+   - Vercel will run `tsc -b && vite build` and deploy your application to a global edge domain (e.g. `https://honora.vercel.app`).
 
 ---
 
@@ -59,7 +59,7 @@ If you prefer deploying directly from your terminal:
    - *Set up and deploy?* **Y**
    - *Which scope?* Select your personal account (`zengllq`)
    - *Link to existing project?* **N**
-   - *Project name?* `tutor-payment-records`
+   - *Project name?* `honora`
    - *Directory located?* `./`
    - *Want to modify settings?* **N** (the included `vercel.json` configures everything automatically)
 
@@ -144,18 +144,18 @@ npm run tauri build
 ```
 
 This compiles the optimized Rust binary and packages the Windows setup installer:
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Tutor Payment Records_0.1.0_x64-setup.exe`
-- **MSI Installer (Optional)**: `src-tauri/target/release/bundle/msi/Tutor Payment Records_0.1.0_x64_en-US.msi`
-- **Standalone Binary**: `src-tauri/target/release/tutor-payment-records.exe` (or `app.exe`)
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_0.1.0_x64-setup.exe`
+- **MSI Installer (Optional)**: `src-tauri/target/release/bundle/msi/Honora_0.1.0_x64_en-US.msi`
+- **Standalone Binary**: `src-tauri/target/release/honora.exe`
 
 ### Windows Installation Steps
-1. Double-click `Tutor Payment Records_0.1.0_x64-setup.exe`.
+1. Double-click `Honora_0.1.0_x64-setup.exe`.
 2. Follow the NSIS setup wizard (installs to user application data with start menu shortcut and desktop icon).
 3. The app is immediately ready to use offline.
 4. Local SQLite database and compressed receipt images are stored safely at:
    ```
-   %APPDATA%\com.tutor.paymentrecords\tutor_records.db
-   %APPDATA%\com.tutor.paymentrecords\receipts\
+   %APPDATA%\com.honora.app\records.sqlite
+   %APPDATA%\com.honora.app\receipts\
    ```
 
 ---
@@ -176,21 +176,21 @@ npm run tauri build -- --target universal-apple-darwin
 ```
 
 Generated bundles:
-- **macOS Disk Image (DMG)**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Tutor Payment Records_0.1.0_universal.dmg`
-- **macOS Application Bundle**: `src-tauri/target/universal-apple-darwin/release/bundle/macos/Tutor Payment Records.app`
+- **macOS Disk Image (DMG)**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_0.1.0_universal.dmg`
+- **macOS Application Bundle**: `src-tauri/target/universal-apple-darwin/release/bundle/macos/Honora.app`
 
 ### macOS Installation Steps
-1. Double-click `Tutor Payment Records_0.1.0_universal.dmg`.
-2. Drag **Tutor Payment Records** into the `/Applications` shortcut folder.
+1. Double-click `Honora_0.1.0_universal.dmg`.
+2. Drag **Honora** into the `/Applications` shortcut folder.
 3. Open the application from Launchpad or `/Applications`.
 4. *(If opening an unsigned developer binary on macOS Gatekeeper)*:
-   Right-click `Tutor Payment Records.app` and choose **Open**, or run:
+   Right-click `Honora.app` and choose **Open**, or run:
    ```bash
-   xattr -cr /Applications/"Tutor Payment Records.app"
+   xattr -cr /Applications/"Honora.app"
    ```
 5. Local SQLite database and receipts are stored at:
    ```
-   ~/Library/Application Support/com.tutor.paymentrecords/
+   ~/Library/Application Support/com.honora.app/
    ```
 
 ---

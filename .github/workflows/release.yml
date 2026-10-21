@@ -70,15 +70,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: 'Tutor Payment Records v__VERSION__'
+          releaseName: 'Honora v__VERSION__'
           releaseBody: |
-            ## Tutor Payment Records Desktop Release
+            ## Honora Desktop Release
 
-            Official multi-platform desktop release featuring offline SQLite database, receipt archive management, and automatic image compression.
+            Official multi-platform desktop release of Honora — offline-first private tutor payment ledger and bank transfer receipt archive with automatic image compression.
 
             ### Downloads:
-            - **Windows**: `.exe` (NSIS Setup Installer) & `.msi` (Windows Installer)
             - **macOS**: `.dmg` (Universal Apple Silicon & Intel) & `.app`
+            - **Windows**: `.exe` (NSIS Setup Installer) & `.msi` (Windows Installer)
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
@@ -86,7 +86,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tutor-payment-records-${{ matrix.platform }}
+          name: honora-${{ matrix.platform }}
           path: |
             src-tauri/target/${{ matrix.target }}/release/bundle/
             src-tauri/target/release/bundle/
