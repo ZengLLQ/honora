@@ -279,7 +279,7 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const backup = await service.exportDatabase();
     expect(backup.app).toBe('Honora');
     expect(backup.schema_version).toBe(1);
-    expect(backup.version).toBe('1.1.2');
+    expect(backup.version).toBe('1.1.3');
     expect(backup.records.length).toBe(1);
     expect(backup.records[0].student_name).toBe('Jessica Tan');
     expect(backup.students.length).toBe(1);

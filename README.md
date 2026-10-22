@@ -2,7 +2,7 @@
 
 A production-ready application for private tutors to record, organize, audit, and review student bank transfer receipts.
 
-Designed with a distinctive visual identity inspired by [`Heron AI`](https://heronaiapp.com/): BT Grotesk typography, warm parchment background with subtle texture, hairline structural borders, deep charcoal typography, Heron brand indigo accents (`#3B3BE6`), and restrained purposeful motion.
+Designed with a distinctive visual identity inspired by [`Heron AI`](https://heronaiapp.com/): BT Grotesk typography, warm parchment background with subtle texture, hairline structural borders, deep charcoal typography, signature Heron AI vibrant brand orange accents (`#FA3600`), and restrained purposeful motion.
 
 ---
 
@@ -10,14 +10,14 @@ Designed with a distinctive visual identity inspired by [`Heron AI`](https://her
 
 Download the official desktop application with offline SQLite database, receipt archive management, and automatic image compression:
 
-[![Latest Release](https://img.shields.io/github/v/release/ZengLLQ/honora?color=3B3BE6&label=Latest%20Release)](https://github.com/ZengLLQ/honora/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/ZengLLQ/honora?color=FA3600&label=Latest%20Release)](https://github.com/ZengLLQ/honora/releases/latest)
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Honora_1.1.2_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Honora_1.1.2_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Honora_1.1.2_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_1.1.3_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.1.3/Honora_1.1.3_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.1.3/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_1.1.3_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.1.3/Honora_1.1.3_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_1.1.3_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.1.3/Honora_1.1.3_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -32,12 +32,15 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 
 ## 1. Key Features
 
+- **Consistent Brand Orange Across Light & Dark Themes (v1.1.3)**:
+  - Standardized the app's signature vibrant brand orange (`#FA3600` / `#E03000` hover) across both light and dark themes.
+  - Eliminated purple/indigo drift in dark mode, ensuring `ADD PAYMENT` buttons, `BrandLogo.tsx`, section indicator marks, focus rings, and selection highlights preserve consistent visual identity.
 - **Streamlined Hero Interface (v1.1.2)**:
   - Focused, uncluttered hero typography with bold uppercase `PAYMENT RECORDS` display heading.
   - Removed decorative icon clutter and trailing punctuation, highlighting the distinct `HONORA · FINANCIAL LEDGER` eyebrow badge.
   - Eliminated descriptive subtitle filler to present an immediate, high-fashion editorial spatial hierarchy aligning directly with `ADD PAYMENT`.
 - **Dark Mode & Celestial Micro-Interaction Toggle (v1.1.1)**:
-  - Full adherence to the **Heron AI Dark Palette & Aesthetic**: Deep near-black background (`#0F0F12`), deep charcoal cards (`#18181E`), subtle inset rows (`#22222A`), dark hairline dividers (`#2A2A34`), and glowing brand indigo accents (`#6366F1` / `#4F46E5`).
+  - Full adherence to the **Heron AI Dark Palette & Aesthetic**: Deep near-black background (`#0F0F12`), deep charcoal cards (`#18181E`), subtle inset rows (`#22222A`), dark hairline dividers (`#2A2A34`), and signature brand orange accents (`#FA3600` / `#E03000`).
   - Tactile celestial toggle button in the header right next to `ADD PAYMENT` featuring rotating 360-degree celestial icon transform and smooth transitions on surfaces, text, and hairline borders.
   - Automatic OS `prefers-color-scheme` synchronization with persistent user preference storage in `localStorage` (`honora_theme`).
   - Comprehensive high-contrast dark adaptation across every component: Header, FinancialSummary, FilterBar, RecordItem, RecordList, PaymentModal, ReceiptViewerModal, DeleteConfirmModal, ImportConfirmModal, StudentCombobox, and Status Badges.
@@ -102,7 +105,7 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 | Secondary Text (`heron-secondary`) | `#414140` | `#A1A1AA` | Soft graphite secondary text, notes, and labels |
 | Tertiary / Muted (`heron-tertiary`) | `#71717A` | `#71717A` | Soft muted metadata, dates, and column headers |
 | Hairline Border (`heron-border`) | `#B3B3AF` | `#2A2A34` | Fine 1px architectural grid lines and dividers |
-| Brand Accent (`heron-brand`) | `#FA3600` | `#6366F1` | Heron brand indigo accent in dark mode / red-orange signature |
+| Brand Accent (`heron-brand`) | `#FA3600` | `#FA3600` | Signature Heron AI vibrant brand orange across all modes |
 | Typography | `BT Grotesk` | `BT Grotesk` | Primary typeface across all headings, body, numerals, labels |
 
 ---
@@ -115,7 +118,7 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 - **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
   - **Rust**: 27 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, status filtering/migrations, database export, replace/merge imports, and receipt filesystem synchronization.
-  - **Vitest**: 103 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, backup schema validation, replace/merge restoration, status toggle concurrency locks, Header actions, Dark Mode detection, theme persistence, and celestial ThemeToggle micro-interactions.
+  - **Vitest**: 106 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, backup schema validation, replace/merge restoration, status toggle concurrency locks, Header actions, Dark Mode detection, theme persistence, and celestial ThemeToggle micro-interactions.
 
 ---
 
@@ -156,7 +159,7 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.1.2_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.1.3_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
 - **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
@@ -165,7 +168,7 @@ Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.1.2_universal.dmg`
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.1.3_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
 - **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 

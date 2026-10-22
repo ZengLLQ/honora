@@ -12,7 +12,7 @@ Private tutoring operations require a reliable, personal accounting ledger for r
 1. **Desktop Native Application**: Powered by **Tauri 2** and **Rust**, leveraging an embedded SQLite database (`rusqlite`) and operating-system-level persistent filesystem storage with native Rust image processing (`image` crate).
 2. **Web Persistent Application**: Powered by **React 19**, **TypeScript**, and **Vite**, utilizing client-side persistent **IndexedDB** (`HonoraDB`) with dual object stores (`payment_records` and `receipt_blobs`) and in-browser Canvas image optimization. Fully optimized for zero-config global deployment on **Vercel**.
 
-Visual styling follows the **Heron AI** design direction ([`heronaiapp.com`](https://heronaiapp.com/)), emphasizing typographic clarity with **BT Grotesk**, a warm parchment aesthetic (`#F5F5ED`), hairline architectural dividers (`#E4E4DC`), indigo brand accents (`#3B3BE6`), and strict adherence to a **Minimal Information Policy**.
+Visual styling follows the **Heron AI** design direction ([`heronaiapp.com`](https://heronaiapp.com/)), emphasizing typographic clarity with **BT Grotesk**, a warm parchment aesthetic (`#F5F5ED`), hairline architectural dividers (`#E4E4DC`), signature vibrant brand orange accents (`#FA3600`), and strict adherence to a **Minimal Information Policy**.
 
 ---
 
@@ -142,7 +142,7 @@ Honora v1.1.1 introduces an authentic **Heron AI Dark Mode** visual system desig
     - Inset rows & table subheads: (`#22222A`).
     - Hairline architectural dividers: (`#2A2A34`).
     - Primary text: Warm ivory (`#F5F5ED`).
-    - Brand accent: Heron brand indigo (`#6366F1` / `#4F46E5`).
+    - Brand accent: Signature vibrant brand orange (`#FA3600` / `#E03000`).
 - **Persistence & System Detection**:
   - Automatically queries the operating system `prefers-color-scheme: dark` media feature as default.
   - Stores user preferences in browser `localStorage` (`honora_theme`).
@@ -157,6 +157,12 @@ Honora v1.1.1 introduces an authentic **Heron AI Dark Mode** visual system desig
 Honora v1.1.2 refines the main page hero presentation to align strictly with the Heron AI high-fashion editorial standard:
 - **Minimalist Hero Typography**: Removed extraneous decorative hero marks and punctuation, presenting an uncluttered `PAYMENT RECORDS` display heading.
 - **Direct Spatial Hierarchy**: Replaces descriptive subtitle filler with clean, well-spaced editorial hierarchy, anchoring the `HONORA · FINANCIAL LEDGER` eyebrow badge cleanly alongside the primary ledger action trigger (`ADD PAYMENT`).
+
+### 3.7 Consistent Brand Orange in Dark Mode (v1.1.3)
+
+Honora v1.1.3 guarantees brand aesthetic cohesion across light and dark modes:
+- **Unified Identity**: Dark mode tokens now cleanly map `--color-heron-brand` to `#FA3600` and `--color-heron-brand-hover` to `#E03000`, matching light mode rather than drifting to purple/indigo.
+- **Component Uniformity**: Primary action buttons (`ADD PAYMENT`), geometric brand logo marks (`BrandLogo.tsx`), category section indicators, focus rings, and selection highlights are consistently rendered in the signature vibrant orange.
 
 ---
 
@@ -234,7 +240,7 @@ The design system directly reflects the visual language of [`heronaiapp.com`](ht
   - `heron-secondary`: `#52525B` (graphite secondary copy and notes)
   - `heron-tertiary`: `#71717A` (granite metadata and uppercase labels)
   - `heron-border`: `#E4E4DC` (1px architectural grid lines and dividers)
-  - `heron-brand`: `#3B3BE6` (vibrant Heron AI indigo accent)
+  - `heron-brand`: `#FA3600` (signature Heron AI vibrant brand orange)
 - **Typography**:
   - Typeface: **BT Grotesk** across all UI elements, headings, forms, and buttons.
   - Tabular numerals: Financial currency amounts use `tabular-nums` (`font-feature-settings: 'tnum' on, 'lnum' on;`) for aligned accounting columns.

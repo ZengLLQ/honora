@@ -273,4 +273,31 @@ describe('Theme System & Toggle', () => {
       expect(onNewPayment).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Brand Color Consistency across Themes', () => {
+    it('ensures dark mode retains the signature brand orange rather than purple/indigo', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const cssPath = path.resolve(__dirname, '../index.css');
+      const cssContent = fs.readFileSync(cssPath, 'utf-8');
+
+      // Extract the .dark block
+      const darkBlockMatch = cssContent.match(/(?:html\.dark,\s*\.dark\s*\{)([^}]+)\}/);
+      expect(darkBlockMatch).toBeTruthy();
+      const darkBlock = darkBlockMatch ? darkBlockMatch[1] : '';
+
+      // Must have orange brand and brand-hover tokens
+      expect(darkBlock).toMatch(/--color-heron-brand:\s*#FA3600;/);
+      expect(darkBlock).toMatch(/--color-heron-brand-hover:\s*#E03000;/);
+      expect(darkBlock).toMatch(/--color-heron-brandHover:\s*#E03000;/);
+      expect(darkBlock).toMatch(/--color-heron-selection:\s*#E15C46;/);
+      expect(darkBlock).toMatch(/--color-lavender:\s*#FA3600;/);
+
+      // Must not contain any purple/indigo brand values
+      expect(darkBlock).not.toContain('#6366F1');
+      expect(darkBlock).not.toContain('#4F46E5');
+      expect(darkBlock).not.toContain('#5858F5');
+    });
+  });
 });
+

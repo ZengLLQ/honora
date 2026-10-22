@@ -115,11 +115,11 @@ html.dark,
   --color-heron-borderSubtle: #25252E;
   --color-heron-border-dark: #323240;
   --color-heron-borderDark: #323240;
-  --color-heron-brand: #6366F1;
-  --color-heron-brand-hover: #4F46E5;
-  --color-heron-brandHover: #4F46E5;
-  --color-heron-brand-dim: rgba(99, 102, 241, 0.15);
-  --color-heron-selection: #4F46E5;
+  --color-heron-brand: #FA3600;
+  --color-heron-brand-hover: #E03000;
+  --color-heron-brandHover: #E03000;
+  --color-heron-brand-dim: rgba(250, 54, 0, 0.15);
+  --color-heron-selection: #E15C46;
   --color-heron-dark-card: #18181E;
 
   /* Backward-compatible token mappings updated for Dark Mode */
@@ -132,9 +132,9 @@ html.dark,
   --color-nearblack-elevated: #22222A;
   --color-nearblack-card: #18181E;
 
-  --color-lavender: #6366F1;
-  --color-lavender-hover: #4F46E5;
-  --color-lavender-dim: rgba(99, 102, 241, 0.15);
+  --color-lavender: #FA3600;
+  --color-lavender-hover: #E03000;
+  --color-lavender-dim: rgba(250, 54, 0, 0.15);
 
   --color-editorial-muted: #71717A;
   --color-editorial-border: #2A2A34;
