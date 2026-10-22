@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus } from 'lucide-react';
-import type { PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
+import type { DatabaseBackup, ImportMode, PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
 import { getPaymentService } from './services/storageService';
+import { validateBackupData } from './services/backupValidation';
 import { getAvailableMonths } from './utils/formatters';
 import { Header } from './components/Header';
 import { FinancialSummary } from './components/FinancialSummary';
@@ -10,6 +11,7 @@ import { RecordList } from './components/RecordList';
 import { PaymentModal } from './components/PaymentModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { ImportConfirmModal } from './components/ImportConfirmModal';
 import { BrandLogo } from './components/BrandLogo';
 
 export function App() {
@@ -26,12 +28,23 @@ export function App() {
   const [filter, setFilter] = useState<RecordFilter>({});
   const [loading, setLoading] = useState(true);
 
+  // Backup & Restore
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [pendingBackup, setPendingBackup] = useState<DatabaseBackup | null>(null);
+  const [feedback, setFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
   // Modals
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [recordToEdit, setRecordToEdit] = useState<PaymentRecord | null>(null);
   const [viewerRecord, setViewerRecord] = useState<PaymentRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<PaymentRecord | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+
 
   const refreshData = useCallback(() => {
     let isCancelled = false;
@@ -121,10 +134,112 @@ export function App() {
     }
   };
 
+  const showFeedback = (type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => {
+      setFeedback((prev) => (prev?.message === message ? null : prev));
+    }, 5000);
+  };
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const backup = await service.exportDatabase();
+      const jsonString = JSON.stringify(backup, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().split('T')[0];
+      a.href = url;
+      a.download = `honora-backup-${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showFeedback(
+        'success',
+        `Database backup exported successfully (${backup.records.length} records, ${backup.receipts?.length ?? 0} receipts)`
+      );
+    } catch (err) {
+      console.error('Export failed:', err);
+      showFeedback('error', 'Failed to export database backup.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      let json: unknown;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        showFeedback('error', 'Invalid backup file: Not a valid JSON document.');
+        return;
+      }
+
+      const valResult = validateBackupData(json);
+      if (!valResult.valid) {
+        showFeedback('error', valResult.error);
+        return;
+      }
+
+      setPendingBackup(valResult.backup);
+      setImportModalOpen(true);
+    } catch (err) {
+      console.error('Failed to read backup file:', err);
+      showFeedback('error', 'Unable to read the chosen backup file.');
+    }
+  };
+
+  const handleConfirmImport = async (backup: DatabaseBackup, mode: ImportMode) => {
+    try {
+      const result = await service.importDatabase(backup, mode);
+      await refreshData();
+      showFeedback(
+        'success',
+        `Database imported successfully (${result.records_count} records, ${result.students_count} students, ${result.receipts_count} receipts)`
+      );
+    } catch (err) {
+      console.error('Import failed:', err);
+      showFeedback('error', 'Failed to restore database from backup.');
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-heron-bg text-heron-primary selection:bg-heron-brand selection:text-white font-sans">
       {/* Top Application Header */}
-      <Header isTauri={service.isTauri} onNewPayment={handleOpenNewPayment} />
+      <Header
+        isTauri={service.isTauri}
+        onNewPayment={handleOpenNewPayment}
+        onExport={handleExport}
+        onImportClick={handleImportClick}
+        isExporting={isExporting}
+      />
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        onChange={handleFileSelected}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
 
       {/* Main Page Area 1: Distinctive Heading & Primary Action */}
       <section className="border-b border-heron-border bg-heron-bg pt-8 sm:pt-12 pb-6">
@@ -205,7 +320,7 @@ export function App() {
 
       {/* Modals */}
       <PaymentModal
-        key={paymentModalOpen ? (recordToEdit?.id ?? 'new') : 'closed'}
+        key={paymentModalOpen ? `payment-${recordToEdit?.id ?? 'new'}` : 'payment-closed'}
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         onSaved={refreshData}
@@ -213,7 +328,7 @@ export function App() {
       />
 
       <ReceiptViewerModal
-        key={viewerRecord ? viewerRecord.id : 'none'}
+        key={viewerRecord ? `viewer-${viewerRecord.id}` : 'viewer-closed'}
         isOpen={Boolean(viewerRecord)}
         record={viewerRecord}
         onClose={() => setViewerRecord(null)}
@@ -229,8 +344,50 @@ export function App() {
         onClose={() => setRecordToDelete(null)}
         onConfirm={handleConfirmDelete}
       />
+
+      <ImportConfirmModal
+        key={importModalOpen ? `import-${pendingBackup?.exported_at ?? 'open'}` : 'import-closed'}
+        isOpen={importModalOpen}
+        backup={pendingBackup}
+        onClose={() => {
+          setImportModalOpen(false);
+          setPendingBackup(null);
+        }}
+        onConfirm={handleConfirmImport}
+      />
+
+
+      {/* Concise Status Feedback Toast Notification */}
+      {feedback && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-heron-surface border shadow-xl text-xs font-sans max-w-md animate-fade-in ${
+            feedback.type === 'success'
+              ? 'border-heron-brand text-heron-primary'
+              : 'border-amber-600/50 text-amber-950'
+          }`}
+        >
+          {feedback.type === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 text-heron-brand shrink-0" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          )}
+          <span className="font-medium flex-1">
+            {feedback.message}
+          </span>
+          <button
+            onClick={() => setFeedback(null)}
+            className="text-heron-tertiary hover:text-heron-primary p-0.5 cursor-pointer"
+            aria-label="Dismiss feedback"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </aside>
+      )}
     </div>
   );
 }
+
 
 export default App;

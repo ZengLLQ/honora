@@ -1,5 +1,10 @@
 import type {
+  BackupReceipt,
+  BackupStudent,
   CreateRecordPayload,
+  DatabaseBackup,
+  ImportMode,
+  ImportResult,
   OptimizationResult,
   PaymentRecord,
   PaymentSummary,
@@ -7,6 +12,7 @@ import type {
   UpdateRecordPayload,
 } from '../types/payment';
 import { blobToBase64, optimizeReceiptInBrowser } from './imageCompression';
+import { validateBackupData } from './backupValidation';
 
 export interface IPaymentService {
   isTauri: boolean;
@@ -20,8 +26,11 @@ export interface IPaymentService {
   togglePaymentStatus(id: string): Promise<PaymentRecord>;
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
+  exportDatabase(): Promise<DatabaseBackup>;
+  importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult>;
   close?(): Promise<void>;
 }
+
 
 export function isTauriEnvironment(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -85,7 +94,16 @@ class TauriPaymentService implements IPaymentService {
   async getStudentNames(): Promise<string[]> {
     return this.invoke<string[]>('get_student_names');
   }
+
+  async exportDatabase(): Promise<DatabaseBackup> {
+    return this.invoke<DatabaseBackup>('export_database');
+  }
+
+  async importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult> {
+    return this.invoke<ImportResult>('import_database', { backup, mode });
+  }
 }
+
 
 // -------------------------------------------------------------
 // WEB INDEXEDDB CLIENT SERVICE IMPLEMENTATION
@@ -565,11 +583,164 @@ class WebIndexedDBPaymentService implements IPaymentService {
     });
   }
 
+  async exportDatabase(): Promise<DatabaseBackup> {
+    const db = await this.dbPromise;
+
+    // 1. Get all records
+    const records = await new Promise<PaymentRecord[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_RECORDS, 'readonly');
+      const req = tx.objectStore(STORE_RECORDS).getAll();
+      req.onsuccess = () => resolve((req.result || []) as PaymentRecord[]);
+      req.onerror = () => reject(req.error);
+    });
+
+    // 2. Get all students
+    let students: BackupStudent[] = [];
+    if (db.objectStoreNames.contains(STORE_STUDENTS)) {
+      students = await new Promise<BackupStudent[]>((resolve, reject) => {
+        const tx = db.transaction(STORE_STUDENTS, 'readonly');
+        const req = tx.objectStore(STORE_STUDENTS).getAll();
+        req.onsuccess = () => resolve((req.result || []) as BackupStudent[]);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // 3. Get all receipts and convert to base64
+    const receipts = await new Promise<BackupReceipt[]>((resolve, reject) => {
+      const tx = db.transaction(STORE_RECEIPTS, 'readonly');
+      const req = tx.objectStore(STORE_RECEIPTS).getAll();
+      req.onsuccess = () => {
+        const list: BackupReceipt[] = [];
+        const rawReceipts = (req.result || []) as {
+          id: string;
+          mime?: string;
+          data?: Uint8Array | ArrayBufferView;
+          base64?: string;
+        }[];
+        for (const r of rawReceipts) {
+          if (!r.id) continue;
+          let base64 = '';
+          if (r.data && (r.data instanceof Uint8Array || ArrayBuffer.isView(r.data))) {
+            const view =
+              r.data instanceof Uint8Array
+                ? r.data
+                : new Uint8Array(
+                    r.data.buffer,
+                    r.data.byteOffset,
+                    r.data.byteLength
+                  );
+            base64 = uint8ArrayToBase64(view);
+          } else if (r.base64) {
+            base64 = r.base64;
+          }
+          list.push({
+            id: r.id,
+            mime_type: r.mime || 'image/jpeg',
+            data_base64: base64,
+          });
+        }
+        resolve(list);
+      };
+      req.onerror = () => reject(req.error);
+    });
+
+    return {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: new Date().toISOString(),
+      records,
+      students,
+      receipts,
+    };
+  }
+
+  async importDatabase(
+    backup: DatabaseBackup,
+    mode: ImportMode
+  ): Promise<ImportResult> {
+    const valResult = validateBackupData(backup);
+    if (!valResult.valid) {
+      throw new Error(valResult.error);
+    }
+    const cleanBackup = valResult.backup;
+
+    const db = await this.dbPromise;
+    const stores = db.objectStoreNames.contains(STORE_STUDENTS)
+      ? [STORE_RECORDS, STORE_STUDENTS, STORE_RECEIPTS]
+      : [STORE_RECORDS, STORE_RECEIPTS];
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(stores, 'readwrite');
+
+      if (mode === 'replace') {
+        tx.objectStore(STORE_RECORDS).clear();
+        tx.objectStore(STORE_RECEIPTS).clear();
+        if (db.objectStoreNames.contains(STORE_STUDENTS)) {
+          tx.objectStore(STORE_STUDENTS).clear();
+        }
+      }
+
+      const recordStore = tx.objectStore(STORE_RECORDS);
+      const studentStore = db.objectStoreNames.contains(STORE_STUDENTS)
+        ? tx.objectStore(STORE_STUDENTS)
+        : null;
+      const receiptStore = tx.objectStore(STORE_RECEIPTS);
+
+      const now = new Date().toISOString();
+
+      // Put records and retain student names
+      for (const rec of cleanBackup.records) {
+        recordStore.put(rec);
+        const name = rec.student_name?.trim();
+        if (name && studentStore) {
+          studentStore.put({ name, created_at: rec.created_at || now });
+        }
+      }
+
+      // Put explicitly listed students
+      if (studentStore && Array.isArray(cleanBackup.students)) {
+        for (const st of cleanBackup.students) {
+          const name = st.name?.trim();
+          if (name) {
+            studentStore.put({ name, created_at: st.created_at || now });
+          }
+        }
+      }
+
+      // Put receipts
+      if (Array.isArray(cleanBackup.receipts)) {
+        for (const r of cleanBackup.receipts) {
+          if (!r.id || !r.data_base64) continue;
+          const bytes = base64ToUint8Array(r.data_base64);
+          receiptStore.put({
+            id: r.id,
+            mime: r.mime_type || 'image/jpeg',
+            data: bytes,
+          });
+        }
+      }
+
+      tx.oncomplete = () => {
+        resolve({
+          records_count: cleanBackup.records.length,
+          students_count: cleanBackup.students.length,
+          receipts_count: cleanBackup.receipts.length,
+          mode,
+        });
+      };
+
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(new Error('Transaction aborted during import.'));
+    });
+  }
+
   async close(): Promise<void> {
     const db = await this.dbPromise;
     db.close();
   }
 }
+
 
 function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = atob(base64);

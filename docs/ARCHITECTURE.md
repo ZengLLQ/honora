@@ -85,8 +85,11 @@ export interface IPaymentService {
   togglePaymentStatus(id: string): Promise<PaymentRecord>;
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
+  exportDatabase(): Promise<DatabaseBackup>;
+  importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult>;
 }
 ```
+
 
 The runtime environment is detected via `isTauriEnvironment()`, which inspects the window context for `__TAURI_INTERNALS__`.
 
@@ -107,9 +110,30 @@ The runtime environment is detected via `isTauriEnvironment()`, which inspects t
 - **Zero Base64 in Database**: Unlike legacy web implementations that store bloated base64 strings in data tables, receipt images are stored purely as typed array buffers, reducing memory overhead by ~33%.
 - **Zero-Student Fresh State**: The application initializes with zero demo records, presenting a clean slate ready for production data entry.
 
+### 3.4 Portable Backup & Cross-Platform Synchronization (v1.1.0)
+
+To guarantee complete user data ownership, portability, and disaster recovery without vendor lock-in, Honora v1.1.0 introduces full database backup and restore capabilities:
+
+- **Portable Archive Format (`DatabaseBackup`)**:
+  - `version`: Version string of the exporting client (e.g. `1.1.0`).
+  - `schema_version`: Strict integer format version (`1`).
+  - `app`: Target application identifier (`Honora`).
+  - `exported_at`: ISO 8601 UTC timestamp.
+  - `records`: Array of full `PaymentRecord` entities.
+  - `students`: Array of student directory entries (`name`, `created_at`).
+  - `receipts`: Array of receipt objects containing file identifier (`id`), MIME type, and base64-encoded image bytes (`data_base64`).
+- **Cross-Platform Interoperability**:
+  - Backups exported from the Web client (IndexedDB) can be directly restored into the native Desktop application (SQLite + OS disk), and vice-versa.
+  - Receipt paths with bare IDs (Web) and relative folder prefixes (`receipts/rec-*.jpg` on Desktop) are seamlessly normalized and resolved during read, write, and deletion.
+- **Restore Modes & Transactional Safety**:
+  - **Safe Merge Mode**: Inserts new records, updates existing matching record IDs, and expands the student directory without deleting any current data.
+  - **Clean Replace Mode**: Atomic rollback-safe full restore. Completely clears existing records, students, and receipts before applying the archive.
+  - **Pre-Validation**: Validates JSON structure, required record fields, dates, non-negative amounts, and base64 image integrity before executing any database or disk mutations.
+
 ---
 
 ## 4. Automatic Receipt Optimization Pipeline
+
 
 Receipts captured with smartphone cameras frequently range from 4 MB to 15 MB at 4000×3000 resolutions. Uncompressed storage quickly exhausts client browser storage quotas and creates slow, laggy list scrolling.
 
@@ -211,10 +235,14 @@ The test suite validates both native Rust engine primitives and React client com
 
 | Test Suite | File | Test Count | Scope |
 |---|---|---|---|
-| **Rust Unit Tests** | `src-tauri/src/image_optimizer.rs` | 10 | Magic bytes, downscale math, JPEG/PNG/WebP encoders, EXIF rotation, large image handling |
-| **Rust DB & Storage Tests**| `src-tauri/src/db.rs`, `storage.rs` | 6 | SQLite migrations, status filtering, CRUD, case-insensitive search, date range filtering, disk I/O |
+| **Rust Image Tests** | `src-tauri/src/image_optimizer.rs` | 10 | Magic bytes, downscale math, JPEG/PNG/WebP encoders, EXIF rotation, large image handling |
+| **Rust DB Tests** | `src-tauri/src/db.rs` | 6 | SQLite migrations, status filtering, CRUD, case-insensitive search, date range filtering, export/import transactions |
+| **Rust Storage Tests** | `src-tauri/src/storage.rs` | 3 | Filesystem receipts lifecycle, path traversal prevention, cross-prefix resolution, clear all |
+| **Rust Command Tests** | `src-tauri/src/commands.rs` | 5 | Backup serialization, corrupt data rejection, web bare-id resolution, roundtrip verification |
 | **Formatters Unit Tests** | `src/test/formatters.test.ts` | 10 | Indonesian Rupiah formatting (`formatIDR`), integer parsing, byte formatting |
 | **Compression Tests** | `src/test/imageCompression.test.ts` | 8 | Magic byte identification, dimension calculation, aspect ratio bounds |
-| **Storage Service Tests** | `src/test/storageService.test.ts` | 5 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling, status toggle |
-| **Component UI Tests** | `src/test/components.test.tsx` | 29 | Header, Summary 3-metrics, FilterBar, RecordItem, Modals, Status toggle, Zero-student state |
-| **Total Automated Tests** | — | **68** | **100% Passing** |
+| **Backup Validation Tests**| `src/test/backupValidation.test.ts` | 7 | Backup schema validation, app tag check, date/amount typing, corrupt rejection, status normalization |
+| **Storage Service Tests** | `src/test/storageService.test.ts` | 11 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling, status toggle, export, merge/replace import, desktop cross-compatibility |
+| **Component UI Tests** | `src/test/components.test.tsx` | 47 | Header with Export/Import, ImportConfirmModal, Summary 3-metrics, FilterBar, RecordItem, Modals, Status toggle, Zero-student state |
+| **Total Automated Tests** | — | **107** | **100% Passing** |
+

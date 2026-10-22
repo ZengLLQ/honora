@@ -1,8 +1,8 @@
 use crate::db;
 use crate::image_optimizer;
 use crate::models::{
-    CreateRecordPayload, OptimizationResult, PaymentRecord, PaymentSummary, RecordFilter,
-    UpdateRecordPayload,
+    BackupReceipt, CreateRecordPayload, DatabaseBackup, ImportResult, OptimizationResult,
+    PaymentRecord, PaymentSummary, RecordFilter, UpdateRecordPayload,
 };
 use crate::storage;
 use crate::AppState;
@@ -344,3 +344,316 @@ pub fn get_student_names(state: State<'_, AppState>) -> Result<Vec<String>, Stri
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     db::get_student_names(&conn).map_err(|e| e.to_string())
 }
+
+pub fn process_export(
+    conn: &rusqlite::Connection,
+    app_data_dir: &std::path::Path,
+) -> Result<DatabaseBackup, String> {
+    let (records, students) = db::export_records_and_students(conn).map_err(|e| e.to_string())?;
+
+    let mut receipts = Vec::new();
+    let mut seen_receipt_ids = std::collections::HashSet::new();
+
+    // 1. Export receipts referenced in records
+    for record in &records {
+        if let Some(ref path) = record.receipt_storage_path {
+            if seen_receipt_ids.insert(path.clone()) {
+                if let Ok(bytes) = storage::read_receipt_file(app_data_dir, path) {
+                    receipts.push(BackupReceipt {
+                        id: path.clone(),
+                        mime_type: record.receipt_mime_type.clone(),
+                        data_base64: BASE64.encode(bytes),
+                    });
+                }
+            }
+        }
+    }
+
+    // 2. Also export any additional receipts found in receipts directory
+    if let Ok(receipts_dir) = storage::get_receipts_dir(app_data_dir) {
+        if let Ok(entries) = std::fs::read_dir(receipts_dir) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.is_file() {
+                    let file_name = entry.file_name().to_string_lossy().to_string();
+                    let full_rel = format!("receipts/{}", file_name);
+                    if !seen_receipt_ids.contains(&file_name) && !seen_receipt_ids.contains(&full_rel) {
+                        seen_receipt_ids.insert(full_rel.clone());
+                        if let Ok(bytes) = std::fs::read(&file_path) {
+                            let mime = match file_path.extension().and_then(|s| s.to_str()).unwrap_or("") {
+                                "png" => "image/png",
+                                "webp" => "image/webp",
+                                _ => "image/jpeg",
+                            };
+                            receipts.push(BackupReceipt {
+                                id: full_rel,
+                                mime_type: Some(mime.to_string()),
+                                data_base64: BASE64.encode(bytes),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(DatabaseBackup {
+        version: "1.1.0".to_string(),
+        schema_version: 1,
+        app: "Honora".to_string(),
+        exported_at: Utc::now().to_rfc3339(),
+        records,
+        students,
+        receipts,
+    })
+}
+
+pub fn process_import(
+    conn: &mut rusqlite::Connection,
+    app_data_dir: &std::path::Path,
+    backup: DatabaseBackup,
+    mode: String,
+) -> Result<ImportResult, String> {
+    // Schema validation
+    if backup.app.trim().to_lowercase() != "honora" {
+        return Err("Invalid backup file: Not a valid Honora backup archive.".to_string());
+    }
+
+    if backup.schema_version != 1 {
+        return Err("Invalid backup file: Unsupported schema version.".to_string());
+    }
+
+    let mode_clean = mode.trim().to_lowercase();
+    if mode_clean != "merge" && mode_clean != "replace" {
+        return Err("Invalid import mode: must be 'merge' or 'replace'.".to_string());
+    }
+
+    // Validate records
+    for (idx, r) in backup.records.iter().enumerate() {
+        if r.id.trim().is_empty() {
+            return Err(format!("Invalid record at index {}: missing record ID.", idx));
+        }
+        if r.student_name.trim().is_empty() {
+            return Err(format!("Invalid record at index {}: missing student name.", idx));
+        }
+        if r.payment_date.trim().is_empty() {
+            return Err(format!("Invalid record at index {}: missing payment date.", idx));
+        }
+        if r.amount_idr < 0 {
+            return Err(format!("Invalid record at index {}: amount must be non-negative.", idx));
+        }
+    }
+
+    // Pre-decode all receipts to ensure zero corruption before any DB/disk mutation
+    let mut decoded_receipts: Vec<(&str, Vec<u8>)> = Vec::with_capacity(backup.receipts.len());
+    for (idx, r) in backup.receipts.iter().enumerate() {
+        if r.id.trim().is_empty() {
+            return Err(format!("Invalid receipt at index {}: missing receipt ID.", idx));
+        }
+        let bytes = BASE64.decode(r.data_base64.trim()).map_err(|_| {
+            format!("Invalid receipt at index {}: corrupted base64 data.", idx)
+        })?;
+        decoded_receipts.push((&r.id, bytes));
+    }
+
+    // If replacing, clean existing receipt files
+    if mode_clean == "replace" {
+        let _ = storage::clear_all_receipts(app_data_dir);
+    }
+
+    // Commit DB changes with transaction
+    db::import_database(conn, &backup.records, &backup.students, &mode_clean)
+        .map_err(|e| format!("Database import failed: {}", e))?;
+
+    // Save all receipts to disk
+    for (receipt_id, data) in decoded_receipts {
+        storage::save_backup_receipt(app_data_dir, receipt_id, &data)
+            .map_err(|e| format!("Failed to save receipt file: {}", e))?;
+    }
+
+    Ok(ImportResult {
+        records_count: backup.records.len(),
+        students_count: backup.students.len(),
+        receipts_count: backup.receipts.len(),
+        mode: mode_clean,
+    })
+}
+
+#[tauri::command]
+pub fn export_database(state: State<'_, AppState>) -> Result<DatabaseBackup, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    process_export(&conn, &state.app_data_dir)
+}
+
+#[tauri::command]
+pub fn import_database(
+    state: State<'_, AppState>,
+    backup: DatabaseBackup,
+    mode: String,
+) -> Result<ImportResult, String> {
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    process_import(&mut conn, &state.app_data_dir, backup, mode)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::BackupStudent;
+    use rusqlite::Connection;
+    use std::env;
+    use std::fs;
+
+    #[test]
+    fn test_process_export_and_import_roundtrip() {
+        let temp_dir = env::temp_dir().join(format!("tutor_cmd_test_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        // 1. Create a record with a real receipt file
+        let receipt_data = b"sample receipt test data";
+        let rel_path = storage::save_receipt_file(&temp_dir, "rec-100", "jpg", receipt_data).unwrap();
+
+        let rec = PaymentRecord {
+            id: "rec-100".to_string(),
+            student_name: "Tutor Student".to_string(),
+            payment_date: "2026-10-22".to_string(),
+            amount_idr: 750_000,
+            receipt_storage_path: Some(rel_path.clone()),
+            receipt_mime_type: Some("image/jpeg".to_string()),
+            receipt_original_size_bytes: Some(100_000),
+            receipt_compressed_size_bytes: Some(50_000),
+            receipt_width: Some(1080),
+            receipt_height: Some(1920),
+            note: Some("October tuition".to_string()),
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-22T08:00:00Z".to_string(),
+            updated_at: "2026-10-22T08:00:00Z".to_string(),
+        };
+        db::create_record(&conn, &rec).unwrap();
+
+        // 2. Export database
+        let backup = process_export(&conn, &temp_dir).unwrap();
+        assert_eq!(backup.app, "Honora");
+        assert_eq!(backup.version, "1.1.0");
+        assert_eq!(backup.schema_version, 1);
+        assert_eq!(backup.records.len(), 1);
+        assert_eq!(backup.records[0].student_name, "Tutor Student");
+        assert_eq!(backup.receipts.len(), 1);
+        assert_eq!(backup.receipts[0].id, rel_path);
+
+        // 3. Clear existing database & storage, then restore in "replace" mode
+        let mut target_conn = Connection::open_in_memory().unwrap();
+        db::init_db(&target_conn).unwrap();
+        let target_dir = env::temp_dir().join(format!("tutor_cmd_target_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&target_dir).unwrap();
+
+        let result = process_import(&mut target_conn, &target_dir, backup, "replace".to_string()).unwrap();
+        assert_eq!(result.records_count, 1);
+        assert_eq!(result.receipts_count, 1);
+        assert_eq!(result.mode, "replace");
+
+        // Verify restored record and receipt
+        let restored_rec = db::get_record_by_id(&target_conn, "rec-100").unwrap().unwrap();
+        assert_eq!(restored_rec.student_name, "Tutor Student");
+        let restored_file = storage::read_receipt_file(&target_dir, &rel_path).unwrap();
+        assert_eq!(restored_file, receipt_data);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+        let _ = fs::remove_dir_all(&target_dir);
+    }
+
+    #[test]
+    fn test_process_import_rejects_corrupted_data() {
+        let temp_dir = env::temp_dir().join(format!("tutor_cmd_err_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let mut conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        // Invalid app name
+        let mut invalid_backup = DatabaseBackup {
+            version: "1.1.0".to_string(),
+            schema_version: 1,
+            app: "MaliciousApp".to_string(),
+            exported_at: "2026-10-22T08:00:00Z".to_string(),
+            records: vec![],
+            students: vec![],
+            receipts: vec![],
+        };
+        assert!(process_import(&mut conn, &temp_dir, invalid_backup.clone(), "replace".to_string()).is_err());
+
+        // Invalid schema version
+        invalid_backup.app = "Honora".to_string();
+        invalid_backup.schema_version = 999;
+        assert!(process_import(&mut conn, &temp_dir, invalid_backup.clone(), "replace".to_string()).is_err());
+
+        // Corrupted base64 in receipt
+        invalid_backup.schema_version = 1;
+        invalid_backup.receipts.push(BackupReceipt {
+            id: "corrupt.jpg".to_string(),
+            mime_type: Some("image/jpeg".to_string()),
+            data_base64: "NOT_VALID_BASE64!@#%^".to_string(),
+        });
+        assert!(process_import(&mut conn, &temp_dir, invalid_backup, "replace".to_string()).is_err());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_process_import_web_receipt_bare_id_resolution() {
+        // Simulates importing backup generated by Web target with bare receipt id "receipt_web_123"
+        let temp_dir = env::temp_dir().join(format!("tutor_web_import_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let mut conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        let web_receipt_data = b"fake web png image bytes";
+        let web_base64 = BASE64.encode(web_receipt_data);
+
+        let web_backup = DatabaseBackup {
+            version: "1.1.0".to_string(),
+            schema_version: 1,
+            app: "Honora".to_string(),
+            exported_at: "2026-10-22T08:00:00Z".to_string(),
+            records: vec![PaymentRecord {
+                id: "web-rec-1".to_string(),
+                student_name: "Web Student".to_string(),
+                payment_date: "2026-10-20".to_string(),
+                amount_idr: 600_000,
+                receipt_storage_path: Some("receipt_web_123".to_string()),
+                receipt_mime_type: Some("image/png".to_string()),
+                receipt_original_size_bytes: Some(80_000),
+                receipt_compressed_size_bytes: Some(30_000),
+                receipt_width: Some(600),
+                receipt_height: Some(800),
+                note: None,
+                status: Some("PAID".to_string()),
+                created_at: "2026-10-20T00:00:00Z".to_string(),
+                updated_at: "2026-10-20T00:00:00Z".to_string(),
+            }],
+            students: vec![BackupStudent {
+                name: "Web Student".to_string(),
+                created_at: Some("2026-10-20T00:00:00Z".to_string()),
+            }],
+            receipts: vec![BackupReceipt {
+                id: "receipt_web_123".to_string(),
+                mime_type: Some("image/png".to_string()),
+                data_base64: web_base64,
+            }],
+        };
+
+        let res = process_import(&mut conn, &temp_dir, web_backup, "merge".to_string()).unwrap();
+        assert_eq!(res.records_count, 1);
+        assert_eq!(res.receipts_count, 1);
+
+        // Read receipt with bare id "receipt_web_123"
+        let read_bytes = storage::read_receipt_file(&temp_dir, "receipt_web_123").unwrap();
+        assert_eq!(read_bytes, web_receipt_data);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+}
+

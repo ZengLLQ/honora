@@ -14,10 +14,10 @@ Download the official desktop application with offline SQLite database, receipt 
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Honora_1.0.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Honora_1.0.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Honora_1.0.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_1.1.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.1.0/Honora_1.1.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.1.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_1.1.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.1.0/Honora_1.1.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_1.1.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.1.0/Honora_1.1.0_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -40,6 +40,13 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
   5. Upload bank transfer receipt (automatically compressed).
   6. Save payment record.
   7. Search, review, inspect, edit, or delete records.
+- **Database Backup Export & Restore Import (v1.1.0)**:
+  - Discreet `EXPORT` and `IMPORT` actions directly accessible from the navigation header.
+  - Complete portable archive generation (`honora-backup-YYYY-MM-DD.json`) bundling structured payment records, student directories, and binary receipt images.
+  - Full bidirectional cross-compatibility: backups exported from Web (IndexedDB) restore cleanly on Desktop (SQLite), and vice versa.
+  - Strict schema and data validation preventing corrupted data injection or malformed records.
+  - Safe interactive modal offering both **Safe Merge** (retaining existing data while adding new records) and **Clean Replace** (complete restoration with safety warning).
+  - Minimal Information Policy status feedback toast notifying exact restoration counts.
 - **Student Name Autocomplete & Reusable Directory (v1.0.0)**:
   - Clean combobox dropdown interface in `PaymentModal` matching Heron AI aesthetic.
   - Automatically captures and deduplicates student names whenever payments are recorded or edited.
@@ -98,8 +105,8 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 - **Web Persistence**: Browser IndexedDB (`HonoraDB`) with dedicated stores for structured records and binary receipt blobs.
 - **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
-  - **Rust**: 16 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, and status filtering/migrations.
-  - **Vitest**: 52 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, status toggle concurrency locks, and React component interactions.
+  - **Rust**: 24 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, status filtering/migrations, database export, replace/merge imports, and receipt filesystem synchronization.
+  - **Vitest**: 83 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, backup schema validation, replace/merge restoration, status toggle concurrency locks, Header actions, and React modal interactions.
 
 ---
 
@@ -140,7 +147,7 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.0.0_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.1.0_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
 - **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
@@ -149,7 +156,7 @@ Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.0.0_universal.dmg`
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.1.0_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
 - **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 

@@ -263,4 +263,188 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const namesAfter = await service.getStudentNames();
     expect(namesAfter).toContain('Zeng Ling Qiang');
   });
+
+  it('exports database with records, students, and receipts', async () => {
+    const service = getPaymentService();
+    const dummyBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    await service.createRecord({
+      student_name: 'Jessica Tan',
+      payment_date: '2026-10-22',
+      amount_idr: 1500000,
+      receipt_base64: dummyBase64,
+      receipt_mime_type: 'image/png',
+    });
+
+    const backup = await service.exportDatabase();
+    expect(backup.app).toBe('Honora');
+    expect(backup.schema_version).toBe(1);
+    expect(backup.version).toBe('1.1.0');
+    expect(backup.records.length).toBe(1);
+    expect(backup.records[0].student_name).toBe('Jessica Tan');
+    expect(backup.students.length).toBe(1);
+    expect(backup.students[0].name).toBe('Jessica Tan');
+    expect(backup.receipts.length).toBe(1);
+    expect(backup.receipts[0].data_base64).toBe(dummyBase64);
+  });
+
+  it('imports database in replace mode, clearing previous records and restoring backup', async () => {
+    const service = getPaymentService();
+    const dummyBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    // 1. Existing record
+    await service.createRecord({
+      student_name: 'Previous Student',
+      payment_date: '2026-10-01',
+      amount_idr: 500000,
+    });
+
+    // 2. Prepare backup to restore
+    const backup = {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [
+        {
+          id: 'rec-restored-1',
+          student_name: 'Restored Student',
+          payment_date: '2026-10-20',
+          amount_idr: 2000000,
+          receipt_storage_path: 'receipt_rec-restored-1',
+          receipt_mime_type: 'image/png',
+          created_at: '2026-10-20T00:00:00Z',
+          updated_at: '2026-10-20T00:00:00Z',
+          status: 'PAID' as const,
+        },
+      ],
+      students: [{ name: 'Restored Student' }],
+      receipts: [
+        {
+          id: 'receipt_rec-restored-1',
+          mime_type: 'image/png',
+          data_base64: dummyBase64,
+        },
+      ],
+    };
+
+    const res = await service.importDatabase(backup, 'replace');
+    expect(res.records_count).toBe(1);
+    expect(res.receipts_count).toBe(1);
+    expect(res.mode).toBe('replace');
+
+    // Previous record must be gone
+    const records = await service.getRecords();
+    expect(records.length).toBe(1);
+    expect(records[0].student_name).toBe('Restored Student');
+
+    // Receipt URL must be resolvable
+    const dataUrl = await service.getReceiptDataUrl(records[0]);
+    expect(dataUrl).toContain('data:image/png;base64,');
+
+    // Student names must contain Restored Student and NOT Previous Student
+    const names = await service.getStudentNames();
+    expect(names).toEqual(['Restored Student']);
+  });
+
+  it('imports database in merge mode, keeping existing records and updating matches', async () => {
+    const service = getPaymentService();
+
+    // 1. Existing record
+    const existing = await service.createRecord({
+      student_name: 'Student A',
+      payment_date: '2026-10-01',
+      amount_idr: 500000,
+    });
+
+    // 2. Backup contains update for Student A and new Student B
+    const backup = {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [
+        {
+          id: existing.id,
+          student_name: 'Student A Updated',
+          payment_date: '2026-10-01',
+          amount_idr: 750000,
+          created_at: existing.created_at,
+          updated_at: '2026-10-02T00:00:00Z',
+          status: 'PAID' as const,
+        },
+        {
+          id: 'rec-student-b',
+          student_name: 'Student B',
+          payment_date: '2026-10-10',
+          amount_idr: 900000,
+          created_at: '2026-10-10T00:00:00Z',
+          updated_at: '2026-10-10T00:00:00Z',
+          status: 'UNPAID' as const,
+        },
+      ],
+      students: [{ name: 'Student B' }],
+      receipts: [],
+    };
+
+    const res = await service.importDatabase(backup, 'merge');
+    expect(res.records_count).toBe(2);
+    expect(res.mode).toBe('merge');
+
+    const all = await service.getRecords();
+    expect(all.length).toBe(2);
+
+    const updatedA = all.find((r) => r.id === existing.id);
+    expect(updatedA?.student_name).toBe('Student A Updated');
+    expect(updatedA?.amount_idr).toBe(750000);
+
+    const names = await service.getStudentNames();
+    expect(names).toContain('Student A Updated');
+    expect(names).toContain('Student B');
+  });
+
+  it('successfully imports Desktop-formatted backup with receipts/ prefix into Web target', async () => {
+    const service = getPaymentService();
+    const dummyBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    // Desktop exports receipt path like "receipts/desktop-123.jpg"
+    const desktopBackup = {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [
+        {
+          id: 'desktop-rec-1',
+          student_name: 'Desktop Student',
+          payment_date: '2026-10-18',
+          amount_idr: 1200000,
+          receipt_storage_path: 'receipts/desktop-123.jpg',
+          receipt_mime_type: 'image/jpeg',
+          created_at: '2026-10-18T00:00:00Z',
+          updated_at: '2026-10-18T00:00:00Z',
+          status: 'PAID' as const,
+        },
+      ],
+      students: [{ name: 'Desktop Student' }],
+      receipts: [
+        {
+          id: 'receipts/desktop-123.jpg',
+          mime_type: 'image/jpeg',
+          data_base64: dummyBase64,
+        },
+      ],
+    };
+
+    await service.importDatabase(desktopBackup, 'replace');
+
+    const records = await service.getRecords();
+    expect(records.length).toBe(1);
+    expect(records[0].student_name).toBe('Desktop Student');
+
+    // Web viewer retrieves receipt using receipt_storage_path "receipts/desktop-123.jpg"
+    const dataUrl = await service.getReceiptDataUrl(records[0]);
+    expect(dataUrl).toContain('data:image/jpeg;base64,');
+  });
 });
+

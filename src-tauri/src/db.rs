@@ -1,4 +1,4 @@
-use crate::models::{PaymentRecord, PaymentSummary, RecordFilter};
+use crate::models::{BackupStudent, PaymentRecord, PaymentSummary, RecordFilter};
 use rusqlite::{params, Connection, OptionalExtension, Result};
 
 pub fn init_db(conn: &Connection) -> Result<()> {
@@ -404,8 +404,104 @@ pub fn get_summary(conn: &Connection, filter: &RecordFilter) -> Result<PaymentSu
     })
 }
 
+pub fn export_records_and_students(
+    conn: &Connection,
+) -> Result<(Vec<PaymentRecord>, Vec<BackupStudent>)> {
+    let records = get_records(conn, &RecordFilter::default())?;
+
+    let mut stmt = conn.prepare("SELECT name, created_at FROM students ORDER BY name COLLATE NOCASE ASC")?;
+    let student_rows = stmt.query_map([], |row| {
+        Ok(BackupStudent {
+            name: row.get(0)?,
+            created_at: row.get(1)?,
+        })
+    })?;
+
+    let mut students = Vec::new();
+    for s in student_rows {
+        students.push(s?);
+    }
+
+    Ok((records, students))
+}
+
+pub fn import_database(
+    conn: &mut Connection,
+    records: &[PaymentRecord],
+    students: &[BackupStudent],
+    mode: &str,
+) -> Result<()> {
+    let tx = conn.transaction()?;
+
+    if mode == "replace" {
+        tx.execute("DELETE FROM payment_records", [])?;
+        tx.execute("DELETE FROM students", [])?;
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    for record in records {
+        let name_trimmed = record.student_name.trim();
+        if !name_trimmed.is_empty() {
+            let _ = tx.execute(
+                "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, ?2)",
+                params![name_trimmed, record.created_at],
+            );
+        }
+
+        let status_val = match record.status.as_deref().map(|s| s.trim().to_uppercase()) {
+            Some(ref s) if s == "UNPAID" => "UNPAID",
+            _ => "PAID",
+        };
+
+        tx.execute(
+            "
+            INSERT OR REPLACE INTO payment_records (
+                id, student_name, payment_date, amount_idr,
+                receipt_storage_path, receipt_mime_type,
+                receipt_original_size_bytes, receipt_compressed_size_bytes,
+                receipt_width, receipt_height, note, status, created_at, updated_at
+            ) VALUES (
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14
+            )
+            ",
+            params![
+                record.id,
+                name_trimmed,
+                record.payment_date,
+                record.amount_idr,
+                record.receipt_storage_path,
+                record.receipt_mime_type,
+                record.receipt_original_size_bytes,
+                record.receipt_compressed_size_bytes,
+                record.receipt_width,
+                record.receipt_height,
+                record.note,
+                status_val,
+                record.created_at,
+                record.updated_at,
+            ],
+        )?;
+    }
+
+    for student in students {
+        let name_trimmed = student.name.trim();
+        if !name_trimmed.is_empty() {
+            let created_at = student.created_at.as_deref().unwrap_or(&now);
+            let _ = tx.execute(
+                "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, ?2)",
+                params![name_trimmed, created_at],
+            );
+        }
+    }
+
+    tx.commit()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     fn setup_test_db() -> Connection {
@@ -801,4 +897,148 @@ mod tests {
         let legacy_names = get_student_names(&conn2).unwrap();
         assert_eq!(legacy_names, vec!["Legacy Student"]);
     }
+
+    #[test]
+    fn test_export_and_import_replace() {
+        let mut conn = setup_test_db();
+
+        let r1 = PaymentRecord {
+            id: "rec-orig-1".to_string(),
+            student_name: "Original Student".to_string(),
+            payment_date: "2026-10-01".to_string(),
+            amount_idr: 500_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-01T00:00:00Z".to_string(),
+            updated_at: "2026-10-01T00:00:00Z".to_string(),
+        };
+        create_record(&conn, &r1).unwrap();
+
+        let (exp_records, exp_students) = export_records_and_students(&conn).unwrap();
+        assert_eq!(exp_records.len(), 1);
+        assert_eq!(exp_students.len(), 1);
+        assert_eq!(exp_students[0].name, "Original Student");
+
+        // Prepare new backup data to replace
+        let new_r1 = PaymentRecord {
+            id: "rec-new-1".to_string(),
+            student_name: "New Student 1".to_string(),
+            payment_date: "2026-10-15".to_string(),
+            amount_idr: 1_000_000,
+            receipt_storage_path: Some("receipts/rec-new-1.jpg".to_string()),
+            receipt_mime_type: Some("image/jpeg".to_string()),
+            receipt_original_size_bytes: Some(500_000),
+            receipt_compressed_size_bytes: Some(150_000),
+            receipt_width: Some(800),
+            receipt_height: Some(600),
+            note: Some("Imported record".to_string()),
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-15T10:00:00Z".to_string(),
+            updated_at: "2026-10-15T10:00:00Z".to_string(),
+        };
+        let new_students = vec![
+            BackupStudent {
+                name: "New Student 1".to_string(),
+                created_at: Some("2026-10-15T10:00:00Z".to_string()),
+            },
+            BackupStudent {
+                name: "New Student 2".to_string(),
+                created_at: Some("2026-10-15T11:00:00Z".to_string()),
+            },
+        ];
+
+        import_database(&mut conn, &[new_r1], &new_students, "replace").unwrap();
+
+        // Previous record should be gone
+        assert!(get_record_by_id(&conn, "rec-orig-1").unwrap().is_none());
+
+        // New record must be present
+        let imported = get_record_by_id(&conn, "rec-new-1").unwrap().unwrap();
+        assert_eq!(imported.student_name, "New Student 1");
+        assert_eq!(imported.amount_idr, 1_000_000);
+
+        // Student directory must contain both new students and NOT original student
+        let student_names = get_student_names(&conn).unwrap();
+        assert_eq!(student_names.len(), 2);
+        assert!(student_names.contains(&"New Student 1".to_string()));
+        assert!(student_names.contains(&"New Student 2".to_string()));
+        assert!(!student_names.contains(&"Original Student".to_string()));
+    }
+
+    #[test]
+    fn test_import_merge() {
+        let mut conn = setup_test_db();
+
+        let r1 = PaymentRecord {
+            id: "rec-existing".to_string(),
+            student_name: "Existing Student".to_string(),
+            payment_date: "2026-10-01".to_string(),
+            amount_idr: 500_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-01T00:00:00Z".to_string(),
+            updated_at: "2026-10-01T00:00:00Z".to_string(),
+        };
+        create_record(&conn, &r1).unwrap();
+
+        // Merge a record with same ID (updates it) and another with new ID
+        let r1_updated = PaymentRecord {
+            id: "rec-existing".to_string(),
+            student_name: "Existing Student Updated".to_string(),
+            payment_date: "2026-10-01".to_string(),
+            amount_idr: 650_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: Some("Updated via merge".to_string()),
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-01T00:00:00Z".to_string(),
+            updated_at: "2026-10-02T00:00:00Z".to_string(),
+        };
+        let r2 = PaymentRecord {
+            id: "rec-new".to_string(),
+            student_name: "Brand New Student".to_string(),
+            payment_date: "2026-10-05".to_string(),
+            amount_idr: 900_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("UNPAID".to_string()),
+            created_at: "2026-10-05T00:00:00Z".to_string(),
+            updated_at: "2026-10-05T00:00:00Z".to_string(),
+        };
+
+        import_database(&mut conn, &[r1_updated, r2], &[], "merge").unwrap();
+
+        let all = get_records(&conn, &RecordFilter::default()).unwrap();
+        assert_eq!(all.len(), 2);
+
+        let fetched_updated = get_record_by_id(&conn, "rec-existing").unwrap().unwrap();
+        assert_eq!(fetched_updated.student_name, "Existing Student Updated");
+        assert_eq!(fetched_updated.amount_idr, 650_000);
+
+        let fetched_new = get_record_by_id(&conn, "rec-new").unwrap().unwrap();
+        assert_eq!(fetched_new.student_name, "Brand New Student");
+        assert_eq!(fetched_new.status.as_deref(), Some("UNPAID"));
+    }
 }
+

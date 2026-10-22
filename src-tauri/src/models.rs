@@ -77,3 +77,38 @@ pub struct UpdateRecordPayload {
     pub receipt_height: Option<u32>,
     pub remove_receipt: Option<bool>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BackupStudent {
+    pub name: String,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BackupReceipt {
+    pub id: String,
+    pub mime_type: Option<String>,
+    pub data_base64: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DatabaseBackup {
+    pub version: String,
+    pub schema_version: u32,
+    pub app: String,
+    pub exported_at: String,
+    pub records: Vec<PaymentRecord>,
+    #[serde(default)]
+    pub students: Vec<BackupStudent>,
+    #[serde(default)]
+    pub receipts: Vec<BackupReceipt>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImportResult {
+    pub records_count: usize,
+    pub students_count: usize,
+    pub receipts_count: usize,
+    pub mode: String,
+}
+

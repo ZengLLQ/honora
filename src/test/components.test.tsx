@@ -8,9 +8,10 @@ import { RecordList } from '../components/RecordList';
 import { PaymentModal } from '../components/PaymentModal';
 import { ReceiptViewerModal } from '../components/ReceiptViewerModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { ImportConfirmModal } from '../components/ImportConfirmModal';
 import { StudentCombobox } from '../components/StudentCombobox';
 import { App } from '../App';
-import { PaymentRecord, PaymentSummary, RecordFilter } from '../types/payment';
+import type { DatabaseBackup, PaymentRecord, PaymentSummary, RecordFilter } from '../types/payment';
 
 describe('UI Components', () => {
   const dummySummary: PaymentSummary = {
@@ -871,5 +872,145 @@ describe('UI Components', () => {
       });
     });
   });
+
+  describe('Header component', () => {
+    it('renders brand identifier and actions', () => {
+      const onNewPayment = vi.fn();
+      const onExport = vi.fn();
+      const onImportClick = vi.fn();
+
+      render(
+        <Header
+          onNewPayment={onNewPayment}
+          onExport={onExport}
+          onImportClick={onImportClick}
+        />
+      );
+
+      expect(screen.getByText('HONORA')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'EXPORT DATABASE' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'IMPORT DATABASE' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'ADD PAYMENT' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'EXPORT DATABASE' }));
+      expect(onExport).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'IMPORT DATABASE' }));
+      expect(onImportClick).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'ADD PAYMENT' }));
+      expect(onNewPayment).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables export button when isExporting is true', () => {
+      render(
+        <Header
+          onNewPayment={vi.fn()}
+          onExport={vi.fn()}
+          onImportClick={vi.fn()}
+          isExporting={true}
+        />
+      );
+
+      const exportBtn = screen.getByRole('button', { name: 'EXPORT DATABASE' });
+      expect(exportBtn).toBeDisabled();
+    });
+  });
+
+  describe('ImportConfirmModal component', () => {
+    const sampleBackup: DatabaseBackup = {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [dummyRecordWithReceipt],
+      students: [{ name: 'Budi Santoso' }],
+      receipts: [
+        {
+          id: 'receipts/rec-1.jpg',
+          mime_type: 'image/jpeg',
+          data_base64: 'aGVsbG8=',
+        },
+      ],
+    };
+
+    it('renders backup metadata and defaults to merge mode', () => {
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      expect(screen.getByText('IMPORT DATABASE BACKUP')).toBeInTheDocument();
+      expect(screen.getByText(/ARCHIVE: Honora v1.1.0/i)).toBeInTheDocument();
+      expect(screen.getByText('Merge with Existing Data')).toBeInTheDocument();
+      expect(screen.getByText('Clean Replace (Full Restore)')).toBeInTheDocument();
+
+      // Check count cards
+      expect(screen.getByText('Records')).toBeInTheDocument();
+      expect(screen.getByText('Students')).toBeInTheDocument();
+      expect(screen.getByText('Receipts')).toBeInTheDocument();
+
+      // Warning callout should not be visible in merge mode
+      expect(screen.queryByText(/Warning: Permanent Replacement/i)).not.toBeInTheDocument();
+    });
+
+    it('toggles to replace mode and reveals warning callout', () => {
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      fireEvent.click(screen.getByText('Clean Replace (Full Restore)'));
+      expect(screen.getByText(/Warning: Permanent Replacement/i)).toBeInTheDocument();
+      expect(screen.getByText(/All current payment records, student directory entries/i)).toBeInTheDocument();
+    });
+
+    it('triggers onConfirm callback with chosen mode and closes', async () => {
+      const onConfirm = vi.fn().mockResolvedValue(undefined);
+      const onClose = vi.fn();
+
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={onClose}
+          onConfirm={onConfirm}
+        />
+      );
+
+      // Select replace mode
+      fireEvent.click(screen.getByText('Clean Replace (Full Restore)'));
+      fireEvent.click(screen.getByRole('button', { name: /Confirm Import/i }));
+
+      await waitFor(() => {
+        expect(onConfirm).toHaveBeenCalledWith(sampleBackup, 'replace');
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
+
+    it('triggers onClose when Cancel is clicked', () => {
+      const onClose = vi.fn();
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={onClose}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+
 

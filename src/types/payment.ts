@@ -69,3 +69,34 @@ export interface UpdateRecordPayload {
   receipt_height?: number | null;
   remove_receipt?: boolean;
 }
+
+export interface BackupStudent {
+  name: string;
+  created_at?: string;
+}
+
+export interface BackupReceipt {
+  id: string;
+  mime_type?: string | null;
+  data_base64: string;
+}
+
+export interface DatabaseBackup {
+  version: string;
+  schema_version: number;
+  app: string;
+  exported_at: string;
+  records: PaymentRecord[];
+  students: BackupStudent[];
+  receipts: BackupReceipt[];
+}
+
+export type ImportMode = 'merge' | 'replace';
+
+export interface ImportResult {
+  records_count: number;
+  students_count: number;
+  receipts_count: number;
+  mode: ImportMode;
+}
+
