@@ -13,7 +13,6 @@ import { PaymentModal } from './components/PaymentModal';
 import { ReceiptViewerModal } from './components/ReceiptViewerModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { ImportConfirmModal } from './components/ImportConfirmModal';
-import { BrandLogo } from './components/BrandLogo';
 
 export function App() {
   const service = useMemo(() => getPaymentService(), []);
@@ -269,15 +268,9 @@ export function App() {
                   HONORA · FINANCIAL LEDGER
                 </span>
               </div>
-              <div className="flex items-center gap-3.5 sm:gap-4.5">
-                <BrandLogo size="hero" />
-                <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
-                  PAYMENT RECORDS.
-                </h1>
-              </div>
-              <p className="mt-2 text-xs sm:text-sm text-heron-secondary max-w-xl font-sans">
-                Personal tutor payment ledger and bank transfer receipt archive.
-              </p>
+              <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
+                PAYMENT RECORDS
+              </h1>
             </div>
 
             <button

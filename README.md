@@ -14,10 +14,10 @@ Download the official desktop application with offline SQLite database, receipt 
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Honora_1.1.1_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.1.1/Honora_1.1.1_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.1.1/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Honora_1.1.1_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.1.1/Honora_1.1.1_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Honora_1.1.1_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.1.1/Honora_1.1.1_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_1.1.2_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_1.1.2_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_1.1.2_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.1.2/Honora_1.1.2_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -32,6 +32,10 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 
 ## 1. Key Features
 
+- **Streamlined Hero Interface (v1.1.2)**:
+  - Focused, uncluttered hero typography with bold uppercase `PAYMENT RECORDS` display heading.
+  - Removed decorative icon clutter and trailing punctuation, highlighting the distinct `HONORA · FINANCIAL LEDGER` eyebrow badge.
+  - Eliminated descriptive subtitle filler to present an immediate, high-fashion editorial spatial hierarchy aligning directly with `ADD PAYMENT`.
 - **Dark Mode & Celestial Micro-Interaction Toggle (v1.1.1)**:
   - Full adherence to the **Heron AI Dark Palette & Aesthetic**: Deep near-black background (`#0F0F12`), deep charcoal cards (`#18181E`), subtle inset rows (`#22222A`), dark hairline dividers (`#2A2A34`), and glowing brand indigo accents (`#6366F1` / `#4F46E5`).
   - Tactile celestial toggle button in the header right next to `ADD PAYMENT` featuring rotating 360-degree celestial icon transform and smooth transitions on surfaces, text, and hairline borders.
@@ -64,7 +68,7 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
   - Modal status selector in `PaymentModal` and live toggle badge in `ReceiptViewerModal`.
   - Comprehensive status filtering (`ALL STATUS`, `PAID ONLY`, `UNPAID ONLY`) in the Filter Bar with dynamic financial summary synchronization.
 - **Unified Brand Logo**:
-  - Signature Heron AI geometric brand mark deployed across the top navigation bar, the main page hero head title (`PAYMENT RECORDS.`), and the browser tab `favicon.svg`.
+  - Signature Heron AI geometric brand mark deployed across the top navigation bar and browser tab `favicon.svg`.
 - **Automatic Receipt Image Optimization**:
   - Validates file content using magic byte signatures (JPEG, PNG, WebP) up to 20 MB.
   - Automatically downsamples oversized receipts preserving aspect ratio (max 2000 × 3000 px).
@@ -152,7 +156,7 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.1.1_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.1.2_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
 - **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
@@ -161,7 +165,7 @@ Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.1.1_universal.dmg`
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.1.2_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
 - **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 

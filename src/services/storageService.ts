@@ -671,7 +671,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
     });
 
     return {
-      version: '1.1.1',
+      version: '1.1.2',
       schema_version: 1,
       app: 'Honora',
       exported_at: new Date().toISOString(),

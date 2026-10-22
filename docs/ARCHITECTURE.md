@@ -152,6 +152,12 @@ Honora v1.1.1 introduces an authentic **Heron AI Dark Mode** visual system desig
   - Micro-interaction combines a 360-degree container rotation, spring scale bounce, and simultaneous -90deg/90deg rotation between the Sun and Moon SVG icons.
   - Global CSS surface transitions provide a silky 300ms cubic-bezier transition across surfaces, borders, and text.
 
+### 3.6 Streamlined Editorial Hero Interface (v1.1.2)
+
+Honora v1.1.2 refines the main page hero presentation to align strictly with the Heron AI high-fashion editorial standard:
+- **Minimalist Hero Typography**: Removed extraneous decorative hero marks and punctuation, presenting an uncluttered `PAYMENT RECORDS` display heading.
+- **Direct Spatial Hierarchy**: Replaces descriptive subtitle filler with clean, well-spaced editorial hierarchy, anchoring the `HONORA · FINANCIAL LEDGER` eyebrow badge cleanly alongside the primary ledger action trigger (`ADD PAYMENT`).
+
 ---
 
 ## 4. Automatic Receipt Optimization Pipeline

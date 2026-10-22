@@ -884,11 +884,13 @@ describe('UI Components', () => {
   describe('Streamlined App Interface', () => {
     it('renders clean focused payment records header without descriptive filler copy', async () => {
       render(<App />);
-      expect(screen.getByRole('heading', { level: 1, name: /PAYMENT RECORDS/i })).toBeInTheDocument();
-      // Ensure BrandLogo is rendered both in header and hero section
+      expect(screen.getByRole('heading', { level: 1, name: 'PAYMENT RECORDS' })).toBeInTheDocument();
+      // Ensure BrandLogo is rendered only in header, removed from hero section
       const brandLogos = screen.getAllByTestId('brand-logo');
-      expect(brandLogos.length).toBeGreaterThanOrEqual(2);
+      expect(brandLogos.length).toBe(1);
 
+      expect(screen.queryByText('PAYMENT RECORDS.')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Personal tutor payment ledger and bank transfer receipt archive/i)).not.toBeInTheDocument();
       expect(screen.queryByText('PAYMENT LEDGER')).not.toBeInTheDocument();
       expect(screen.queryByText('FINANCIAL OVERVIEW & AUDIT')).not.toBeInTheDocument();
       expect(screen.queryByText('Financial Receipt Ledger')).not.toBeInTheDocument();
@@ -963,7 +965,7 @@ describe('UI Components', () => {
 
   describe('ImportConfirmModal component', () => {
     const sampleBackup: DatabaseBackup = {
-      version: '1.1.1',
+      version: '1.1.2',
       schema_version: 1,
       app: 'Honora',
       exported_at: '2026-10-22T08:00:00Z',
@@ -989,7 +991,7 @@ describe('UI Components', () => {
       );
 
       expect(screen.getByText('IMPORT DATABASE BACKUP')).toBeInTheDocument();
-      expect(screen.getByText(/ARCHIVE: Honora v1.1.1/i)).toBeInTheDocument();
+      expect(screen.getByText(/ARCHIVE: Honora v1.1.2/i)).toBeInTheDocument();
       expect(screen.getByText('Merge with Existing Data')).toBeInTheDocument();
       expect(screen.getByText('Clean Replace (Full Restore)')).toBeInTheDocument();
 
