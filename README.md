@@ -89,7 +89,7 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 
 - **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons, BT Grotesk font family.
 - **Desktop Core**: Rust 1.98, Tauri 2.12, Rusqlite 0.31 (bundled SQLite), Image 0.25 (JPEG, PNG, WebP encoders/decoders), UUID v4, Chrono.
-- **Web Persistence**: Browser IndexedDB (`TutorPaymentRecordsDB`) with dedicated stores for structured records and binary receipt blobs.
+- **Web Persistence**: Browser IndexedDB (`HonoraDB`) with dedicated stores for structured records and binary receipt blobs.
 - **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
   - **Rust**: 16 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, and status filtering/migrations.
@@ -136,7 +136,7 @@ npm run tauri build
 ```
 - **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_0.1.0_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
-- **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.app\`.
+- **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
 #### macOS Version (`.dmg` & `.app`)
 Build Universal macOS installer (Apple Silicon + Intel):
@@ -145,7 +145,7 @@ npm run tauri build -- --target universal-apple-darwin
 ```
 - **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_0.1.0_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
-- **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.app/`.
+- **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 
 #### Automated GitHub Actions CI/CD
 A complete release workflow (`.github/workflows/release.yml`) compiles Windows and macOS installers on GitHub hosted runners upon pushing version tags (`v*`) or master releases.
