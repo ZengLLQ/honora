@@ -203,4 +203,42 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     });
     expect(rec3.status).toBe('PAID');
   });
+
+  it('captures distinct student names, provides alphabetical list, and retains them even if record is deleted', async () => {
+    const service = getPaymentService();
+
+    // 1. Initially empty
+    const initialNames = await service.getStudentNames();
+    expect(initialNames).toEqual([]);
+
+    // 2. Add first record
+    await service.createRecord({
+      student_name: 'Clarissa Natalia',
+      payment_date: '2026-10-22',
+      amount_idr: 1500000,
+    });
+    const names1 = await service.getStudentNames();
+    expect(names1).toEqual(['Clarissa Natalia']);
+
+    // 3. Add second record with same student (case variant) & third with Budi Santoso
+    await service.createRecord({
+      student_name: '  clarissa natalia  ',
+      payment_date: '2026-10-23',
+      amount_idr: 1200000,
+    });
+    const rec3 = await service.createRecord({
+      student_name: 'Budi Santoso',
+      payment_date: '2026-10-24',
+      amount_idr: 900000,
+    });
+
+    const names2 = await service.getStudentNames();
+    expect(names2).toEqual(['Budi Santoso', 'Clarissa Natalia']);
+
+    // 4. Delete Budi Santoso record: student name is still retained in student list
+    await service.deleteRecord(rec3.id);
+    const namesAfterDelete = await service.getStudentNames();
+    expect(namesAfterDelete).toContain('Budi Santoso');
+    expect(namesAfterDelete).toContain('Clarissa Natalia');
+  });
 });

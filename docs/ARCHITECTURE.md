@@ -78,6 +78,7 @@ export interface IPaymentService {
   getRecords(filter?: RecordFilter): Promise<PaymentRecord[]>;
   getSummary(filter?: RecordFilter): Promise<PaymentSummary>;
   getRecord(id: string): Promise<PaymentRecord | null>;
+  getStudentNames(): Promise<string[]>;
   createRecord(payload: CreateRecordPayload): Promise<PaymentRecord>;
   updateRecord(payload: UpdateRecordPayload): Promise<PaymentRecord>;
   deleteRecord(id: string): Promise<void>;
@@ -91,16 +92,18 @@ The runtime environment is detected via `isTauriEnvironment()`, which inspects t
 
 ### 3.2 Desktop Storage Implementation (SQLite + OS Disk)
 
-- **Database**: Embedded SQLite database initialized inside the OS user application data directory (`%APPDATA%\com.honora.app\records.sqlite` on Windows).
+- **Database**: Embedded SQLite database initialized inside the OS user application data directory (`%APPDATA%\com.honora.desktop\records.sqlite` on Windows).
 - **Receipt Filesystem**: Uploaded receipts are saved as binary files directly to disk under a dedicated `receipts/` directory within the application data path.
+- **Students Table**: Maintains a persistent student directory (`students` table) with case-insensitive unique names captured on payment creation/update.
 - **Transactional Integrity**: Creating or deleting records executes within SQLite atomic transactions, ensuring associated receipt files on disk are removed safely without orphaned references.
 
 ### 3.3 Web Storage Implementation (IndexedDB Binary Blobs)
 
-- **Database**: Browser-native IndexedDB database named `HonoraDB` (Version 1).
+- **Database**: Browser-native IndexedDB database named `HonoraDB` (Version 2).
 - **Separation of Concerns**:
   - `STORE_RECORDS`: Stores structured JSON payment records indexed by `student_name` and `payment_date`.
   - `STORE_RECEIPTS`: Stores raw binary image bytes as `Uint8Array` indexed by `receipt_storage_path`.
+  - `STORE_STUDENTS`: Stores deduplicated student name directory entries for 1-click autocomplete.
 - **Zero Base64 in Database**: Unlike legacy web implementations that store bloated base64 strings in data tables, receipt images are stored purely as typed array buffers, reducing memory overhead by ~33%.
 - **Zero-Student Fresh State**: The application initializes with zero demo records, presenting a clean slate ready for production data entry.
 

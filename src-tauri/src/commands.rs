@@ -338,3 +338,9 @@ pub fn delete_payment_record(state: State<'_, AppState>, id: String) -> Result<(
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn get_student_names(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    db::get_student_names(&conn).map_err(|e| e.to_string())
+}

@@ -13,6 +13,7 @@ export interface IPaymentService {
   getRecords(filter?: RecordFilter): Promise<PaymentRecord[]>;
   getSummary(filter?: RecordFilter): Promise<PaymentSummary>;
   getRecord(id: string): Promise<PaymentRecord | null>;
+  getStudentNames(): Promise<string[]>;
   createRecord(payload: CreateRecordPayload): Promise<PaymentRecord>;
   updateRecord(payload: UpdateRecordPayload): Promise<PaymentRecord>;
   deleteRecord(id: string): Promise<void>;
@@ -80,15 +81,20 @@ class TauriPaymentService implements IPaymentService {
     const mime = record.receipt_mime_type || 'image/jpeg';
     return `data:${mime};base64,${base64}`;
   }
+
+  async getStudentNames(): Promise<string[]> {
+    return this.invoke<string[]>('get_student_names');
+  }
 }
 
 // -------------------------------------------------------------
 // WEB INDEXEDDB CLIENT SERVICE IMPLEMENTATION
 // -------------------------------------------------------------
 const DB_NAME = 'HonoraDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_RECORDS = 'payment_records';
 const STORE_RECEIPTS = 'receipt_blobs';
+const STORE_STUDENTS = 'students';
 
 class WebIndexedDBPaymentService implements IPaymentService {
   isTauri = false;
@@ -111,6 +117,9 @@ class WebIndexedDBPaymentService implements IPaymentService {
         }
         if (!db.objectStoreNames.contains(STORE_RECEIPTS)) {
           db.createObjectStore(STORE_RECEIPTS, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(STORE_STUDENTS)) {
+          db.createObjectStore(STORE_STUDENTS, { keyPath: 'name' });
         }
       };
 
@@ -278,12 +287,17 @@ class WebIndexedDBPaymentService implements IPaymentService {
     };
 
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_RECORDS, 'readwrite');
-      const store = tx.objectStore(STORE_RECORDS);
-      const req = store.put(record);
+      const stores = db.objectStoreNames.contains(STORE_STUDENTS)
+        ? [STORE_RECORDS, STORE_STUDENTS]
+        : [STORE_RECORDS];
+      const tx = db.transaction(stores, 'readwrite');
+      tx.objectStore(STORE_RECORDS).put(record);
+      if (db.objectStoreNames.contains(STORE_STUDENTS)) {
+        tx.objectStore(STORE_STUDENTS).put({ name, created_at: now });
+      }
 
-      req.onsuccess = () => resolve(record);
-      req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve(record);
+      tx.onerror = () => reject(tx.error);
     });
   }
 
@@ -309,8 +323,8 @@ class WebIndexedDBPaymentService implements IPaymentService {
     if (payload.remove_receipt) {
       if (storagePath) {
         await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
-          const req = tx.objectStore(STORE_RECEIPTS).delete(storagePath!);
+          const txReceipt = db.transaction(STORE_RECEIPTS, 'readwrite');
+          const req = txReceipt.objectStore(STORE_RECEIPTS).delete(storagePath!);
           req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);
         });
@@ -324,8 +338,8 @@ class WebIndexedDBPaymentService implements IPaymentService {
     } else if (payload.receipt_base64 && payload.receipt_base64.trim()) {
       if (storagePath) {
         await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORE_RECEIPTS, 'readwrite');
-          const req = tx.objectStore(STORE_RECEIPTS).delete(storagePath!);
+          const txReceipt = db.transaction(STORE_RECEIPTS, 'readwrite');
+          const req = txReceipt.objectStore(STORE_RECEIPTS).delete(storagePath!);
           req.onsuccess = () => resolve();
           req.onerror = () => reject(req.error);
         });
@@ -373,13 +387,72 @@ class WebIndexedDBPaymentService implements IPaymentService {
     };
 
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_RECORDS, 'readwrite');
-      const store = tx.objectStore(STORE_RECORDS);
-      const req = store.put(updated);
+      const stores = db.objectStoreNames.contains(STORE_STUDENTS)
+        ? [STORE_RECORDS, STORE_STUDENTS]
+        : [STORE_RECORDS];
+      const tx = db.transaction(stores, 'readwrite');
+      tx.objectStore(STORE_RECORDS).put(updated);
+      if (db.objectStoreNames.contains(STORE_STUDENTS)) {
+        tx.objectStore(STORE_STUDENTS).put({ name, created_at: now });
+      }
 
-      req.onsuccess = () => resolve(updated);
+      tx.oncomplete = () => resolve(updated);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async getStudentNames(): Promise<string[]> {
+    const db = await this.dbPromise;
+    const nameMap = new Map<string, string>();
+
+    // 1. Scan STORE_STUDENTS if available
+    if (db.objectStoreNames.contains(STORE_STUDENTS)) {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_STUDENTS, 'readonly');
+        const store = tx.objectStore(STORE_STUDENTS);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const items = (req.result || []) as { name: string }[];
+          for (const item of items) {
+            const raw = item?.name?.trim();
+            if (raw) {
+              const key = raw.toLowerCase();
+              if (!nameMap.has(key)) {
+                nameMap.set(key, raw);
+              }
+            }
+          }
+          resolve();
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    // 2. Scan STORE_RECORDS for any records
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_RECORDS, 'readonly');
+      const store = tx.objectStore(STORE_RECORDS);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const items = (req.result || []) as PaymentRecord[];
+        for (const item of items) {
+          const raw = item?.student_name?.trim();
+          if (raw) {
+            const key = raw.toLowerCase();
+            if (!nameMap.has(key)) {
+              nameMap.set(key, raw);
+            }
+          }
+        }
+        resolve();
+      };
       req.onerror = () => reject(req.error);
     });
+
+    const names = Array.from(nameMap.values()).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    return names;
   }
 
   async deleteRecord(id: string): Promise<void> {

@@ -14,10 +14,10 @@ Download the official desktop application with offline SQLite database, receipt 
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Honora_0.1.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Honora_0.1.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Honora_0.1.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v0.1.0/Honora_0.1.0_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_1.0.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_1.0.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_1.0.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.0.0/Honora_1.0.0_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -40,6 +40,12 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
   5. Upload bank transfer receipt (automatically compressed).
   6. Save payment record.
   7. Search, review, inspect, edit, or delete records.
+- **Student Name Autocomplete & Reusable Directory (v1.0.0)**:
+  - Clean combobox dropdown interface in `PaymentModal` matching Heron AI aesthetic.
+  - Automatically captures and deduplicates student names whenever payments are recorded or edited.
+  - 1-click selection from the dropdown list or keyboard navigation (`ArrowDown`, `ArrowUp`, `Enter`, `Escape`).
+  - Seamless auto-discovery of newly entered student names for all future payment entries.
+  - Supported natively across both Tauri SQLite backend (`students` table) and Web IndexedDB (`students` store).
 - **Interactive PAID / UNPAID Status Toggle**:
   - One-click status badge on every record row (`RecordItem`) with immediate optimistic UI updates and concurrent click throttling.
   - Safe, idempotent SQLite schema migration in Rust backend (`ALTER TABLE payment_records ADD COLUMN status TEXT NOT NULL DEFAULT 'PAID'`).
@@ -134,7 +140,7 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_0.1.0_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.0.0_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
 - **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
@@ -143,7 +149,7 @@ Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_0.1.0_universal.dmg`
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.0.0_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
 - **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 

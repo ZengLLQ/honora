@@ -23,7 +23,24 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_payment_records_student ON payment_records(student_name);
         CREATE INDEX IF NOT EXISTS idx_payment_records_date ON payment_records(payment_date);
+
+        CREATE TABLE IF NOT EXISTS students (
+            name TEXT PRIMARY KEY COLLATE NOCASE,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_students_name ON students(name);
         ",
+    )?;
+
+    // Populate students table with distinct names from existing payment_records if any
+    conn.execute(
+        "INSERT OR IGNORE INTO students (name, created_at)
+         SELECT TRIM(student_name), MIN(created_at)
+         FROM payment_records
+         WHERE TRIM(student_name) != ''
+         GROUP BY TRIM(student_name)",
+        [],
     )?;
 
     // Migration for existing tables: check if status column exists, if not add it
@@ -63,6 +80,14 @@ pub fn init_db(conn: &Connection) -> Result<()> {
 }
 
 pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    let name_trimmed = record.student_name.trim();
+    if !name_trimmed.is_empty() {
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, ?2)",
+            params![name_trimmed, record.created_at],
+        );
+    }
+
     let status_val = match record.status.as_deref().map(|s| s.trim().to_uppercase()) {
         Some(ref s) if s == "UNPAID" => "UNPAID",
         _ => "PAID",
@@ -99,6 +124,14 @@ pub fn create_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
 }
 
 pub fn update_record(conn: &Connection, record: &PaymentRecord) -> Result<()> {
+    let name_trimmed = record.student_name.trim();
+    if !name_trimmed.is_empty() {
+        let _ = conn.execute(
+            "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, ?2)",
+            params![name_trimmed, record.updated_at],
+        );
+    }
+
     let status_val = match record.status.as_deref().map(|s| s.trim().to_uppercase()) {
         Some(ref s) if s == "UNPAID" => "UNPAID",
         _ => "PAID",
@@ -179,6 +212,38 @@ pub fn get_record_by_id(conn: &Connection, id: &str) -> Result<Option<PaymentRec
 pub fn delete_record(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM payment_records WHERE id = ?1", params![id])?;
     Ok(())
+}
+
+pub fn get_student_names(conn: &Connection) -> Result<Vec<String>> {
+    let mut names = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    let mut stmt = conn.prepare(
+        "SELECT name FROM students WHERE TRIM(name) != '' ORDER BY name COLLATE NOCASE ASC",
+    )?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
+    for r in rows {
+        let name = r?;
+        let trimmed = name.trim().to_string();
+        if !trimmed.is_empty() && seen.insert(trimmed.to_lowercase()) {
+            names.push(trimmed);
+        }
+    }
+
+    let mut rec_stmt = conn.prepare(
+        "SELECT DISTINCT TRIM(student_name) FROM payment_records WHERE TRIM(student_name) != '' ORDER BY student_name COLLATE NOCASE ASC",
+    )?;
+    let rec_rows = rec_stmt.query_map([], |row| row.get::<_, String>(0))?;
+    for r in rec_rows {
+        let name = r?;
+        let trimmed = name.trim().to_string();
+        if !trimmed.is_empty() && seen.insert(trimmed.to_lowercase()) {
+            names.push(trimmed);
+        }
+    }
+
+    names.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+    Ok(names)
 }
 
 pub fn get_records(conn: &Connection, filter: &RecordFilter) -> Result<Vec<PaymentRecord>> {
@@ -626,5 +691,110 @@ mod tests {
         create_record(&conn, &unknown).unwrap();
         let fetched_unknown = get_record_by_id(&conn, "rec-unknown").unwrap().unwrap();
         assert_eq!(fetched_unknown.status.as_deref(), Some("PAID"));
+    }
+
+    #[test]
+    fn test_student_names_tracking_and_derivation() {
+        let conn = Connection::open_in_memory().unwrap();
+        init_db(&conn).unwrap();
+
+        // 1. Initially empty
+        let initial_names = get_student_names(&conn).unwrap();
+        assert!(initial_names.is_empty());
+
+        // 2. Add first record for Alice Smith
+        let rec1 = PaymentRecord {
+            id: "rec-1".to_string(),
+            student_name: "Alice Smith".to_string(),
+            payment_date: "2026-10-01".to_string(),
+            amount_idr: 500_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-01T10:00:00Z".to_string(),
+            updated_at: "2026-10-01T10:00:00Z".to_string(),
+        };
+        create_record(&conn, &rec1).unwrap();
+
+        // 3. Add second record with same student (case/whitespace variant)
+        let rec2 = PaymentRecord {
+            id: "rec-2".to_string(),
+            student_name: "  alice smith  ".to_string(),
+            payment_date: "2026-10-02".to_string(),
+            amount_idr: 600_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-02T10:00:00Z".to_string(),
+            updated_at: "2026-10-02T10:00:00Z".to_string(),
+        };
+        create_record(&conn, &rec2).unwrap();
+
+        // 4. Add third record for Bob Dylan
+        let rec3 = PaymentRecord {
+            id: "rec-3".to_string(),
+            student_name: "Bob Dylan".to_string(),
+            payment_date: "2026-10-03".to_string(),
+            amount_idr: 700_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: None,
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-03T10:00:00Z".to_string(),
+            updated_at: "2026-10-03T10:00:00Z".to_string(),
+        };
+        create_record(&conn, &rec3).unwrap();
+
+        let names = get_student_names(&conn).unwrap();
+        assert_eq!(names.len(), 2);
+        assert_eq!(names[0], "Alice Smith");
+        assert_eq!(names[1], "Bob Dylan");
+
+        // 5. Deleting a payment record does not erase student from students list
+        delete_record(&conn, "rec-3").unwrap();
+        let names_after_delete = get_student_names(&conn).unwrap();
+        assert_eq!(names_after_delete.len(), 2);
+        assert!(names_after_delete.contains(&"Bob Dylan".to_string()));
+
+        // 6. Test migration/population from existing records without students table
+        let conn2 = Connection::open_in_memory().unwrap();
+        conn2.execute_batch("
+            CREATE TABLE payment_records (
+                id TEXT PRIMARY KEY,
+                student_name TEXT NOT NULL,
+                payment_date TEXT NOT NULL,
+                amount_idr INTEGER NOT NULL,
+                receipt_storage_path TEXT,
+                receipt_mime_type TEXT,
+                receipt_original_size_bytes INTEGER,
+                receipt_compressed_size_bytes INTEGER,
+                receipt_width INTEGER,
+                receipt_height INTEGER,
+                note TEXT,
+                status TEXT NOT NULL DEFAULT 'PAID',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            INSERT INTO payment_records (id, student_name, payment_date, amount_idr, created_at, updated_at)
+            VALUES ('leg-1', 'Legacy Student', '2026-09-01', 300000, '2026-09-01T00:00:00Z', '2026-09-01T00:00:00Z');
+        ").unwrap();
+
+        init_db(&conn2).unwrap();
+        let legacy_names = get_student_names(&conn2).unwrap();
+        assert_eq!(legacy_names, vec!["Legacy Student"]);
     }
 }

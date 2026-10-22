@@ -8,6 +8,7 @@ import { RecordList } from '../components/RecordList';
 import { PaymentModal } from '../components/PaymentModal';
 import { ReceiptViewerModal } from '../components/ReceiptViewerModal';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { StudentCombobox } from '../components/StudentCombobox';
 import { App } from '../App';
 import { PaymentRecord, PaymentSummary, RecordFilter } from '../types/payment';
 
@@ -479,6 +480,126 @@ describe('UI Components', () => {
       fireEvent.click(paidBtn);
       expect(paidBtn).toHaveAttribute('aria-pressed', 'true');
       expect(unpaidBtn).toHaveAttribute('aria-pressed', 'false');
+    });
+  });
+
+  describe('StudentCombobox', () => {
+    const sampleStudents = ['Alice Smith', 'Budi Santoso', 'Clarissa Natalia'];
+
+    it('renders with placeholder and current value', () => {
+      render(
+        <StudentCombobox
+          value="Budi Santoso"
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+      expect(screen.getByDisplayValue('Budi Santoso')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Student name')).toBeInTheDocument();
+    });
+
+    it('opens suggestion list on focus and allows 1-click selection', () => {
+      const onChange = vi.fn();
+      render(
+        <StudentCombobox
+          value=""
+          onChange={onChange}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      // Suggestions should appear
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+      expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
+      expect(screen.getByText('Clarissa Natalia')).toBeInTheDocument();
+
+      // 1-click on an option selects it
+      fireEvent.mouseDown(screen.getByText('Clarissa Natalia'));
+      expect(onChange).toHaveBeenCalledWith('Clarissa Natalia');
+    });
+
+    it('filters suggestions based on user input', () => {
+      render(
+        <StudentCombobox
+          value="bu"
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      // 'Budi Santoso' matches 'bu', others do not
+      expect(screen.getByText('Budi Santoso')).toBeInTheDocument();
+      expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
+      expect(screen.queryByText('Clarissa Natalia')).not.toBeInTheDocument();
+    });
+
+    it('shows auto-saves hint when user types a brand new student name', () => {
+      render(
+        <StudentCombobox
+          value="David Kevin"
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      expect(screen.getByText(/New student:/i)).toBeInTheDocument();
+      expect(screen.getByText('"David Kevin"')).toBeInTheDocument();
+      expect(screen.getByText('Auto-saves')).toBeInTheDocument();
+    });
+
+    it('supports keyboard navigation with ArrowDown and Enter to select', () => {
+      const onChange = vi.fn();
+      render(
+        <StudentCombobox
+          value=""
+          onChange={onChange}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      // ArrowDown opens dropdown and highlights first item ('Alice Smith')
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+
+      // Second ArrowDown moves to 'Budi Santoso'
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+      // Enter selects highlighted 'Budi Santoso'
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onChange).toHaveBeenCalledWith('Budi Santoso');
+    });
+
+    it('closes suggestions when Escape key is pressed', () => {
+      render(
+        <StudentCombobox
+          value=""
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
     });
   });
 

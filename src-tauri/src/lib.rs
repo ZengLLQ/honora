@@ -82,6 +82,7 @@ pub fn run() {
             commands::update_payment_record,
             commands::delete_payment_record,
             commands::toggle_payment_status,
+            commands::get_student_names,
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

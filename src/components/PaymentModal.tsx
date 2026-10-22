@@ -8,6 +8,7 @@ import type {
 } from '../types/payment';
 import { getPaymentService } from '../services/storageService';
 import { formatBytes, formatIDR, parseIDRInput } from '../utils/formatters';
+import { StudentCombobox } from './StudentCombobox';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   // Form states initialized directly
   const [studentName, setStudentName] = useState(recordToEdit?.student_name || '');
+  const [studentOptions, setStudentOptions] = useState<string[]>([]);
   const [paymentDate, setPaymentDate] = useState(
     () => recordToEdit?.payment_date || new Date().toISOString().split('T')[0]
   );
@@ -48,6 +50,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load existing student names for combobox suggestions
+  useEffect(() => {
+    let isCancelled = false;
+    getPaymentService()
+      .getStudentNames()
+      .then((names) => {
+        if (!isCancelled) setStudentOptions(names);
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch student names:', err);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   // Load existing receipt if editing a record with receipt
   useEffect(() => {
@@ -236,14 +254,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
             <label className="block text-xs font-sans tracking-wider uppercase text-heron-primary mb-1.5 font-medium">
               Student Name <span className="text-heron-brand">*</span>
             </label>
-            <input
-              type="text"
+            <StudentCombobox
+              value={studentName}
+              onChange={setStudentName}
+              options={studentOptions}
+              placeholder="Student name"
               required
               autoFocus
-              placeholder="Student name"
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              className="w-full bg-heron-surface border border-heron-border px-3.5 py-2.5 text-sm font-sans text-heron-primary placeholder:text-heron-tertiary/60 focus:border-heron-brand focus:outline-none transition-colors"
             />
           </div>
 
