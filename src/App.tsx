@@ -4,6 +4,7 @@ import type { DatabaseBackup, ImportMode, PaymentRecord, PaymentSummary, RecordF
 import { getPaymentService } from './services/storageService';
 import { validateBackupData } from './services/backupValidation';
 import { getAvailableMonths } from './utils/formatters';
+import { useTheme } from './utils/theme';
 import { Header } from './components/Header';
 import { FinancialSummary } from './components/FinancialSummary';
 import { FilterBar } from './components/FilterBar';
@@ -16,6 +17,7 @@ import { BrandLogo } from './components/BrandLogo';
 
 export function App() {
   const service = useMemo(() => getPaymentService(), []);
+  const { theme, toggleTheme } = useTheme();
 
   const [records, setRecords] = useState<PaymentRecord[]>([]);
   const [allRecordsForMonths, setAllRecordsForMonths] = useState<PaymentRecord[]>([]);
@@ -240,6 +242,8 @@ export function App() {
         onExport={handleExport}
         onImportClick={handleImportClick}
         isExporting={isExporting}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Hidden file input for import */}
@@ -279,7 +283,7 @@ export function App() {
             <button
               onClick={handleOpenNewPayment}
               aria-label="ADD PAYMENT"
-              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
+              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>ADD PAYMENT</span>
@@ -378,7 +382,7 @@ export function App() {
           className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 bg-heron-surface border shadow-xl text-xs font-sans max-w-md animate-fade-in ${
             feedback.type === 'success'
               ? 'border-heron-brand text-heron-primary'
-              : 'border-amber-600/50 text-amber-950'
+              : 'border-amber-600/50 text-amber-950 dark:text-amber-200'
           }`}
         >
           {feedback.type === 'success' ? (

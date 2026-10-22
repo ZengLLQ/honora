@@ -225,7 +225,7 @@ export function validateBackupData(data: unknown): ValidationResult {
   }
 
   const backup: DatabaseBackup = {
-    version: typeof obj.version === 'string' ? obj.version : '1.1.0',
+    version: typeof obj.version === 'string' ? obj.version : '1.1.1',
     schema_version: obj.schema_version,
     app: 'Honora',
     exported_at:

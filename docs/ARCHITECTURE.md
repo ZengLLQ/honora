@@ -130,6 +130,28 @@ To guarantee complete user data ownership, portability, and disaster recovery wi
   - **Clean Replace Mode**: Atomic rollback-safe full restore. Completely clears existing records, students, and receipts before applying the archive.
   - **Pre-Validation**: Validates JSON structure, required record fields, dates, non-negative amounts, and base64 image integrity before executing any database or disk mutations.
 
+### 3.5 Dark Mode & Celestial Motion Architecture (v1.1.1)
+
+Honora v1.1.1 introduces an authentic **Heron AI Dark Mode** visual system designed for prolonged tutoring financial sessions:
+
+- **Dynamic CSS Variable Topology**:
+  - Rather than scattering fragmented utility classes across templates, Honora maps the core design tokens (`--color-heron-bg`, `--color-heron-surface`, `--color-heron-subtle`, `--color-heron-border`, `--color-heron-primary`, `--color-heron-brand`) via CSS root variables.
+  - Applying `.dark` on `document.documentElement` dynamically mutates the entire application to the dark palette:
+    - Page background: Deep near-black (`#0F0F12`).
+    - Surface card background: Deep charcoal (`#18181E`).
+    - Inset rows & table subheads: (`#22222A`).
+    - Hairline architectural dividers: (`#2A2A34`).
+    - Primary text: Warm ivory (`#F5F5ED`).
+    - Brand accent: Heron brand indigo (`#6366F1` / `#4F46E5`).
+- **Persistence & System Detection**:
+  - Automatically queries the operating system `prefers-color-scheme: dark` media feature as default.
+  - Stores user preferences in browser `localStorage` (`honora_theme`).
+  - Pre-render inline script in `index.html` prevents any white flash of unstyled theme (FOUT).
+- **Celestial Micro-Interaction Toggle**:
+  - Positioned in the Header right next to `ADD PAYMENT`.
+  - Micro-interaction combines a 360-degree container rotation, spring scale bounce, and simultaneous -90deg/90deg rotation between the Sun and Moon SVG icons.
+  - Global CSS surface transitions provide a silky 300ms cubic-bezier transition across surfaces, borders, and text.
+
 ---
 
 ## 4. Automatic Receipt Optimization Pipeline

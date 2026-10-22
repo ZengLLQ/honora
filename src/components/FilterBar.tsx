@@ -147,7 +147,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             {isFiltered && (
               <button
                 onClick={handleReset}
-                className="btn-heron flex items-center gap-1.5 px-3 py-2 text-xs font-sans font-medium tracking-wider uppercase text-heron-secondary hover:text-white bg-heron-surface hover:bg-heron-primary border border-heron-border hover:border-heron-primary transition-all duration-200 cursor-pointer shadow-sm"
+                className="btn-heron flex items-center gap-1.5 px-3 py-2 text-xs font-sans font-medium tracking-wider uppercase text-heron-secondary hover:text-white bg-heron-surface hover:bg-heron-primary dark:hover:bg-heron-brand border border-heron-border hover:border-heron-primary dark:hover:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm"
                 title="Reset active filters"
               >
                 <RotateCcw className="w-3 h-3" />

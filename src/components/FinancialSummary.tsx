@@ -31,7 +31,7 @@ export const FinancialSummary: React.FC<FinancialSummaryProps> = ({
                 TOTAL PAYMENTS
               </span>
               {isFiltered ? (
-                <span className="px-2 py-0.5 text-[10px] font-sans tracking-wider bg-heron-primary text-white font-semibold uppercase">
+                <span className="px-2 py-0.5 text-[10px] font-sans tracking-wider bg-heron-primary dark:bg-heron-brand text-white font-semibold uppercase">
                   FILTERED
                 </span>
               ) : (

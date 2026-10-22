@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* BT Grotesk Primary Font Family (Local assets from Heron AI) */
 @font-face {
   font-family: 'BT Grotesk';
@@ -90,11 +92,58 @@
 
 :root {
   --size-border: max(1px, 0.1rem);
+  color-scheme: light;
+}
+
+html.dark,
+.dark {
+  color-scheme: dark;
+
+  /* Heron AI Exact Dark Palette System */
+  --color-heron-bg: #0F0F12;
+  --color-heron-surface: #18181E;
+  --color-heron-subtle: #22222A;
+  --color-heron-primary: #F5F5ED;
+  --color-heron-secondary: #A1A1AA;
+  --color-heron-tertiary: #71717A;
+  --color-heron-granite: #8E8E93;
+  --color-heron-border: #2A2A34;
+  --color-heron-border-subtle: #25252E;
+  --color-heron-border-dark: #323240;
+  --color-heron-brand: #6366F1;
+  --color-heron-brand-hover: #4F46E5;
+  --color-heron-brand-dim: rgba(99, 102, 241, 0.15);
+  --color-heron-selection: #4F46E5;
+  --color-heron-dark-card: #18181E;
+
+  /* Backward-compatible token mappings updated for Dark Mode */
+  --color-ivory: #0F0F12;
+  --color-ivory-light: #18181E;
+  --color-ivory-dark: #22222A;
+
+  --color-nearblack: #F5F5ED;
+  --color-nearblack-surface: #18181E;
+  --color-nearblack-elevated: #22222A;
+  --color-nearblack-card: #18181E;
+
+  --color-lavender: #6366F1;
+  --color-lavender-hover: #4F46E5;
+  --color-lavender-dim: rgba(99, 102, 241, 0.15);
+
+  --color-editorial-muted: #71717A;
+  --color-editorial-border: #2A2A34;
+  --color-editorial-borderDark: #323240;
+  --color-editorial-borderDarkLight: #3D3D4E;
+  --color-editorial-subtle: #2A2A34;
+
+  --color-status-success: #22C55E;
+  --color-status-error: #EF4444;
+  --color-status-warning: #F59E0B;
 }
 
 html {
-  background-color: #F5F5ED;
-  color: #282828;
+  background-color: var(--color-heron-bg);
+  color: var(--color-heron-primary);
   font-family: 'BT Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.02em;
   -webkit-font-smoothing: antialiased;
@@ -102,16 +151,24 @@ html {
 }
 
 body {
-  background-color: #F5F5ED;
+  background-color: var(--color-heron-bg);
   background-image: url('/bg.svg');
   background-repeat: repeat;
   background-size: 124px 124px;
-  color: #282828;
+  color: var(--color-heron-primary);
   min-height: 100vh;
+  transition: background-color 0.3s cubic-bezier(0.23, 1, 0.32, 1), color 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+html.dark body,
+.dark body {
+  background-color: var(--color-heron-bg);
+  background-image: none;
+  color: var(--color-heron-primary);
 }
 
 ::selection {
-  background-color: #E15C46;
+  background-color: var(--color-heron-selection);
   color: #FFFFFF;
 }
 
@@ -121,23 +178,23 @@ body {
 
 /* Heron Hairline borders */
 .hairline-b {
-  border-bottom: var(--size-border) solid #B3B3AF;
+  border-bottom: var(--size-border) solid var(--color-heron-border);
 }
 
 .hairline-t {
-  border-top: var(--size-border) solid #B3B3AF;
+  border-top: var(--size-border) solid var(--color-heron-border);
 }
 
 .hairline-l {
-  border-left: var(--size-border) solid #B3B3AF;
+  border-left: var(--size-border) solid var(--color-heron-border);
 }
 
 .hairline-r {
-  border-right: var(--size-border) solid #B3B3AF;
+  border-right: var(--size-border) solid var(--color-heron-border);
 }
 
 .hairline-all {
-  border: var(--size-border) solid #B3B3AF;
+  border: var(--size-border) solid var(--color-heron-border);
 }
 
 .font-mono-num {
@@ -147,14 +204,17 @@ body {
 }
 
 .editorial-focus:focus-visible {
-  outline: 2px solid #FA3600;
+  outline: 2px solid var(--color-heron-brand);
   outline-offset: 2px;
 }
 
 /* Heron signature button hover effect */
 .btn-heron {
   position: relative;
-  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+              background-color 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 0.25s cubic-bezier(0.23, 1, 0.32, 1),
+              color 0.25s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .btn-heron:hover {
@@ -167,11 +227,29 @@ body {
 
 /* Heron subtle dashed line */
 .line-dash-h {
-  border-bottom: 1px dashed #B3B3AF;
+  border-bottom: 1px dashed var(--color-heron-border);
 }
 
 .line-dash-v {
-  border-right: 1px dashed #B3B3AF;
+  border-right: 1px dashed var(--color-heron-border);
+}
+
+/* Smooth color transitions for surfaces, text, and hairline borders */
+header,
+main,
+footer,
+section,
+aside,
+div[role="dialog"] {
+  transition: background-color 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+              color 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Native dark calendar indicator inversion */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85);
 }
 
 /* Reduced motion preference */
@@ -183,3 +261,4 @@ body {
     scroll-behavior: auto !important;
   }
 }
+

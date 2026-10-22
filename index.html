@@ -8,6 +8,21 @@
     <link rel="preload" href="/fonts/BTGrotesk-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/BTGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/BTGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('honora_theme');
+          var isDark = stored ? stored === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-heron-bg text-heron-primary antialiased selection:bg-heron-brand selection:text-white font-sans">
     <div id="root"></div>

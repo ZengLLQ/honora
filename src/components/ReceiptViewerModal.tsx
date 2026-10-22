@@ -86,12 +86,12 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div className="relative w-full max-w-6xl h-[90vh] bg-heron-bg border border-heron-border shadow-2xl flex flex-col md:flex-row overflow-hidden">
         {/* Main Left: Receipt Image Preview Stage */}
-        <div className="relative flex-1 bg-heron-primary flex flex-col border-b md:border-b-0 md:border-r border-heron-borderDark overflow-hidden">
+        <div className="relative flex-1 bg-[#111116] flex flex-col border-b md:border-b-0 md:border-r border-heron-borderDark overflow-hidden">
           {/* Zoom controls floating bar */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-heron-primary/85 backdrop-blur-sm border border-heron-borderDark px-3 py-1.5 text-xs text-white">
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#18181E]/90 backdrop-blur-sm border border-heron-borderDark px-3 py-1.5 text-xs text-white">
             <button
               onClick={handleZoomOut}
               className="p-1 hover:text-heron-brand transition-colors cursor-pointer"
@@ -239,8 +239,8 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
                         isToggling ? 'opacity-60 cursor-wait' : 'cursor-pointer'
                       } ${
                         status === 'PAID'
-                          ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
-                          : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
+                          ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25'
+                          : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:hover:bg-amber-500/25'
                       }`}
                     >
                       <span
@@ -248,8 +248,8 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
                           isToggling
                             ? 'border border-current border-t-transparent animate-spin'
                             : status === 'PAID'
-                            ? 'bg-emerald-600'
-                            : 'bg-amber-600'
+                            ? 'bg-emerald-600 dark:bg-emerald-400'
+                            : 'bg-amber-600 dark:bg-amber-400'
                         }`}
                       />
                       <span>{status}</span>

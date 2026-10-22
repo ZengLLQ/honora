@@ -222,7 +222,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-xl bg-heron-bg border border-heron-border shadow-2xl my-8">
         {/* Modal Header */}
         <div className="bg-heron-surface text-heron-primary px-6 sm:px-8 py-5 flex items-center justify-between border-b border-heron-border">
@@ -320,11 +320,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 aria-label="Status PAID"
                 className={`py-2 px-3 text-xs font-sans font-semibold tracking-wider uppercase border transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   status === 'PAID'
-                    ? 'border-emerald-600 bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-600/30'
+                    ? 'border-emerald-600 bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-600/30 dark:border-emerald-500 dark:bg-emerald-500/15 dark:text-emerald-400 dark:ring-emerald-500/30'
                     : 'border-heron-border bg-heron-surface text-heron-tertiary hover:border-heron-primary hover:text-heron-primary'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${status === 'PAID' ? 'bg-emerald-600' : 'bg-heron-border'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${status === 'PAID' ? 'bg-emerald-600 dark:bg-emerald-400' : 'bg-heron-border'}`} />
                 <span>PAID</span>
               </button>
               <button
@@ -334,11 +334,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 aria-label="Status UNPAID"
                 className={`py-2 px-3 text-xs font-sans font-semibold tracking-wider uppercase border transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   status === 'UNPAID'
-                    ? 'border-amber-600 bg-amber-500/10 text-amber-800 ring-1 ring-amber-600/30'
+                    ? 'border-amber-600 bg-amber-500/10 text-amber-800 ring-1 ring-amber-600/30 dark:border-amber-500 dark:bg-amber-500/15 dark:text-amber-400 dark:ring-amber-500/30'
                     : 'border-heron-border bg-heron-surface text-heron-tertiary hover:border-heron-primary hover:text-heron-primary'
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${status === 'UNPAID' ? 'bg-amber-600' : 'bg-heron-border'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${status === 'UNPAID' ? 'bg-amber-600 dark:bg-amber-400' : 'bg-heron-border'}`} />
                 <span>UNPAID</span>
               </button>
             </div>
@@ -508,7 +508,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               type="submit"
               disabled={isSubmitting || isOptimizing}
               aria-label={isEditing ? 'Save Changes' : 'ADD PAYMENT'}
-              className="btn-heron px-6 py-2.5 text-xs font-sans font-semibold tracking-wider uppercase bg-heron-primary hover:bg-heron-brand text-white border border-heron-primary hover:border-heron-brand transition-all duration-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+              className="btn-heron px-6 py-2.5 text-xs font-sans font-semibold tracking-wider uppercase bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
             >
               {isSubmitting ? (
                 <>

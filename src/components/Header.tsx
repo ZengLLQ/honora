@@ -1,13 +1,17 @@
 import React from 'react';
 import { Download, Plus, Upload } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
+import { ThemeToggle } from './ThemeToggle';
+import { useTheme, type Theme } from '../utils/theme';
 
-interface HeaderProps {
+export interface HeaderProps {
   isTauri?: boolean;
   onNewPayment: () => void;
   onExport?: () => void;
   onImportClick?: () => void;
   isExporting?: boolean;
+  theme?: Theme;
+  onToggleTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +20,14 @@ export const Header: React.FC<HeaderProps> = ({
   onExport,
   onImportClick,
   isExporting,
+  theme: propTheme,
+  onToggleTheme: propOnToggleTheme,
 }) => {
+  // Allow fallback to internal hook if props not provided
+  const internalThemeContext = useTheme();
+  const currentTheme = propTheme ?? internalThemeContext.theme;
+  const handleToggleTheme = propOnToggleTheme ?? internalThemeContext.toggleTheme;
+
   return (
     <header className="bg-heron-bg/90 backdrop-blur-md text-heron-primary border-b border-heron-border sticky top-0 z-40 transition-colors">
       <div className="max-w-page mx-auto px-6 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
@@ -56,11 +67,17 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Dark Mode Toggle Button placed directly next to ADD PAYMENT */}
+          <ThemeToggle
+            theme={currentTheme}
+            onToggle={handleToggleTheme}
+          />
+
           <button
             onClick={onNewPayment}
             aria-label="ADD PAYMENT"
             title="Record Payment"
-            className="btn-heron group relative inline-flex items-center gap-2 bg-heron-primary hover:bg-heron-brand text-white text-xs font-sans font-semibold tracking-wider uppercase px-4 sm:px-5 py-2 sm:py-2.5 border border-heron-primary hover:border-heron-brand transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
+            className="btn-heron group relative inline-flex items-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white text-xs font-sans font-semibold tracking-wider uppercase px-4 sm:px-5 py-2 sm:py-2.5 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
           >
             <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200 text-white" />
             <span>ADD PAYMENT</span>
@@ -70,4 +87,3 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
-

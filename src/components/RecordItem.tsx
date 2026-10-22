@@ -73,8 +73,8 @@ export const RecordItem: React.FC<RecordItemProps> = ({
                     isToggling ? 'opacity-60 cursor-wait' : 'cursor-pointer'
                   } ${
                     status === 'PAID'
-                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600'
-                      : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600'
+                      ? 'border-emerald-600/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 hover:border-emerald-600 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25'
+                      : 'border-amber-600/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 hover:border-amber-600 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-400 dark:hover:bg-amber-500/25'
                   }`}
                 >
                   <span
@@ -82,8 +82,8 @@ export const RecordItem: React.FC<RecordItemProps> = ({
                       isToggling
                         ? 'border border-current border-t-transparent animate-spin'
                         : status === 'PAID'
-                        ? 'bg-emerald-600'
-                        : 'bg-amber-600'
+                        ? 'bg-emerald-600 dark:bg-emerald-400'
+                        : 'bg-amber-600 dark:bg-amber-400'
                     }`}
                   />
                   <span>{status}</span>

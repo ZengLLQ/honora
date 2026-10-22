@@ -31,7 +31,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
       <div className="w-full max-w-md bg-heron-bg border border-heron-border shadow-2xl p-6 sm:p-8">
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">

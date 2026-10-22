@@ -54,7 +54,7 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
       aria-modal="true"
       aria-labelledby="import-modal-title"
       onClick={!isImporting ? onClose : undefined}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
     >
       <div
         onClick={(e) => e.stopPropagation()}

@@ -125,6 +125,50 @@ describe('UI Components', () => {
     });
   });
 
+  describe('Header', () => {
+    it('renders BrandLogo, Honora title, Export, Import, ThemeToggle, and Add Payment', () => {
+      const onNewPayment = vi.fn();
+      const onExport = vi.fn();
+      const onImportClick = vi.fn();
+      const onToggleTheme = vi.fn();
+
+      render(
+        <Header
+          onNewPayment={onNewPayment}
+          onExport={onExport}
+          onImportClick={onImportClick}
+          theme="light"
+          onToggleTheme={onToggleTheme}
+        />
+      );
+
+      expect(screen.getByText('HONORA')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /EXPORT/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /IMPORT/i })).toBeInTheDocument();
+
+      const toggleBtn = screen.getByRole('button', { name: /Switch to dark mode/i });
+      const addPaymentBtn = screen.getByRole('button', { name: /ADD PAYMENT/i });
+
+      expect(toggleBtn).toBeInTheDocument();
+      expect(addPaymentBtn).toBeInTheDocument();
+
+      // Theme toggle is right next to ADD PAYMENT
+      expect(toggleBtn.nextElementSibling).toBe(addPaymentBtn);
+
+      fireEvent.click(toggleBtn);
+      expect(onToggleTheme).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(addPaymentBtn);
+      expect(onNewPayment).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: /EXPORT/i }));
+      expect(onExport).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: /IMPORT/i }));
+      expect(onImportClick).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('FilterBar', () => {
     it('triggers search change callback', () => {
       const onChange = vi.fn();
@@ -919,7 +963,7 @@ describe('UI Components', () => {
 
   describe('ImportConfirmModal component', () => {
     const sampleBackup: DatabaseBackup = {
-      version: '1.1.0',
+      version: '1.1.1',
       schema_version: 1,
       app: 'Honora',
       exported_at: '2026-10-22T08:00:00Z',
@@ -945,7 +989,7 @@ describe('UI Components', () => {
       );
 
       expect(screen.getByText('IMPORT DATABASE BACKUP')).toBeInTheDocument();
-      expect(screen.getByText(/ARCHIVE: Honora v1.1.0/i)).toBeInTheDocument();
+      expect(screen.getByText(/ARCHIVE: Honora v1.1.1/i)).toBeInTheDocument();
       expect(screen.getByText('Merge with Existing Data')).toBeInTheDocument();
       expect(screen.getByText('Clean Replace (Full Restore)')).toBeInTheDocument();
 

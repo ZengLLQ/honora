@@ -398,7 +398,7 @@ pub fn process_export(
     }
 
     Ok(DatabaseBackup {
-        version: "1.1.0".to_string(),
+        version: "1.1.1".to_string(),
         schema_version: 1,
         app: "Honora".to_string(),
         exported_at: Utc::now().to_rfc3339(),
@@ -595,7 +595,7 @@ mod tests {
         // 2. Export database
         let backup = process_export(&conn, &temp_dir).unwrap();
         assert_eq!(backup.app, "Honora");
-        assert_eq!(backup.version, "1.1.0");
+        assert_eq!(backup.version, "1.1.1");
         assert_eq!(backup.schema_version, 1);
         assert_eq!(backup.records.len(), 1);
         assert_eq!(backup.records[0].student_name, "Tutor Student");
