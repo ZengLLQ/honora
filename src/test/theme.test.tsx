@@ -168,6 +168,28 @@ describe('Theme System & Toggle', () => {
       expect(result.current.theme).toBe('dark');
       expect(document.documentElement.classList.contains('dark')).toBe(true);
     });
+
+    it('synchronizes dynamically when OS prefers-color-scheme changes if no manual preference is saved', () => {
+      let changeHandler: ((e: MediaQueryListEvent) => void) | null = null;
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn((event: string, cb: (e: MediaQueryListEvent) => void) => {
+          if (event === 'change') changeHandler = cb;
+        }),
+        removeEventListener: vi.fn(),
+      }));
+
+      const { result } = renderHook(() => useTheme());
+      expect(result.current.theme).toBe('light');
+
+      act(() => {
+        changeHandler?.({ matches: true } as MediaQueryListEvent);
+      });
+
+      expect(result.current.theme).toBe('dark');
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+    });
   });
 
   describe('ThemeToggle Component', () => {
@@ -194,6 +216,29 @@ describe('Theme System & Toggle', () => {
       fireEvent.click(button);
 
       expect(onToggle).toHaveBeenCalledTimes(1);
+    });
+
+    it('progressively accumulates forward rotation degrees across successive clicks without reverse spin', () => {
+      const onToggle = vi.fn();
+      const { container } = render(<ThemeToggle theme="light" onToggle={onToggle} />);
+
+      const button = screen.getByRole('button', { name: /Switch to dark mode/i });
+      const rotatingDiv = container.querySelector('.will-change-transform') as HTMLElement;
+
+      expect(rotatingDiv).toBeInTheDocument();
+      expect(rotatingDiv.style.transform).toBe('rotate(0deg)');
+
+      // First click: rotates to 360deg
+      fireEvent.click(button);
+      expect(rotatingDiv.style.transform).toBe('rotate(360deg)');
+
+      // Second click: rotates to 720deg forward
+      fireEvent.click(button);
+      expect(rotatingDiv.style.transform).toBe('rotate(720deg)');
+
+      // Third click: rotates to 1080deg forward
+      fireEvent.click(button);
+      expect(rotatingDiv.style.transform).toBe('rotate(1080deg)');
     });
   });
 

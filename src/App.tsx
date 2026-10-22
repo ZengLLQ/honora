@@ -283,7 +283,7 @@ export function App() {
             <button
               onClick={handleOpenNewPayment}
               aria-label="ADD PAYMENT"
-              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
+              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>ADD PAYMENT</span>

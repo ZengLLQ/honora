@@ -53,9 +53,12 @@
   --color-heron-granite: #626260;
   --color-heron-border: #B3B3AF;
   --color-heron-border-subtle: #D5D5CF;
+  --color-heron-borderSubtle: #D5D5CF;
   --color-heron-border-dark: #3A3A38;
+  --color-heron-borderDark: #3A3A38;
   --color-heron-brand: #FA3600;
   --color-heron-brand-hover: #E03000;
+  --color-heron-brandHover: #E03000;
   --color-heron-brand-dim: rgba(250, 54, 0, 0.10);
   --color-heron-selection: #E15C46;
   --color-heron-dark-card: #1F1F1E;
@@ -109,9 +112,12 @@ html.dark,
   --color-heron-granite: #8E8E93;
   --color-heron-border: #2A2A34;
   --color-heron-border-subtle: #25252E;
+  --color-heron-borderSubtle: #25252E;
   --color-heron-border-dark: #323240;
+  --color-heron-borderDark: #323240;
   --color-heron-brand: #6366F1;
   --color-heron-brand-hover: #4F46E5;
+  --color-heron-brandHover: #4F46E5;
   --color-heron-brand-dim: rgba(99, 102, 241, 0.15);
   --color-heron-selection: #4F46E5;
   --color-heron-dark-card: #18181E;

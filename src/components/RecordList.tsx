@@ -86,7 +86,7 @@ export const RecordList: React.FC<RecordListProps> = ({
                 type="button"
                 onClick={onNewPayment}
                 aria-label="ADD PAYMENT"
-                className="btn-heron inline-flex items-center gap-2 px-6 py-3 text-xs font-sans tracking-wider uppercase bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white font-semibold border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm"
+                className="btn-heron inline-flex items-center gap-2 px-6 py-3 text-xs font-sans tracking-wider uppercase bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover text-white font-semibold border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>ADD PAYMENT</span>

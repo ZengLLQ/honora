@@ -508,7 +508,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               type="submit"
               disabled={isSubmitting || isOptimizing}
               aria-label={isEditing ? 'Save Changes' : 'ADD PAYMENT'}
-              className="btn-heron px-6 py-2.5 text-xs font-sans font-semibold tracking-wider uppercase bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
+              className="btn-heron px-6 py-2.5 text-xs font-sans font-semibold tracking-wider uppercase bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover text-white border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm"
             >
               {isSubmitting ? (
                 <>

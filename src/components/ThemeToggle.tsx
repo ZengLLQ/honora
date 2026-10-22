@@ -13,15 +13,12 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   onToggle,
   className = '',
 }) => {
-  const [isRotating, setIsRotating] = useState(false);
+  const [rotationDeg, setRotationDeg] = useState(0);
   const isDark = theme === 'dark';
 
   const handleClick = () => {
-    setIsRotating(true);
+    setRotationDeg((prev) => prev + 360);
     onToggle();
-    setTimeout(() => {
-      setIsRotating(false);
-    }, 450);
   };
 
   return (
@@ -30,17 +27,16 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       onClick={handleClick}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className={`btn-heron group relative inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-heron-surface hover:bg-heron-subtle text-heron-primary border border-heron-border hover:border-heron-secondary/40 transition-all duration-200 active:scale-[0.94] cursor-pointer shadow-xs overflow-hidden select-none ${className}`}
+      className={`btn-heron group relative inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 bg-heron-surface hover:bg-heron-subtle text-heron-primary border border-heron-border hover:border-heron-secondary/40 transition-all duration-200 active:scale-[0.92] cursor-pointer shadow-xs overflow-hidden select-none ${className}`}
     >
       <span className="sr-only">
         {isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       </span>
 
-      {/* Rotating motion container */}
+      {/* Rotating motion container: smoothly rotates forward 360deg on each click without reverse spin glitch */}
       <div
-        className={`relative w-4 h-4 flex items-center justify-center transition-transform duration-500 ease-out ${
-          isRotating ? 'rotate-[360deg] scale-110' : 'rotate-0 scale-100'
-        }`}
+        className="relative w-4 h-4 flex items-center justify-center transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] will-change-transform"
+        style={{ transform: `rotate(${rotationDeg}deg)` }}
       >
         {/* Sun Icon (Visible in Light Mode) */}
         <Sun

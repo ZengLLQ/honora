@@ -230,7 +230,7 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
                       isHighlighted
                         ? 'bg-heron-brand/10 text-heron-brand font-medium'
                         : isSelected
-                        ? 'bg-heron-surface text-heron-primary font-semibold'
+                        ? 'bg-heron-subtle text-heron-primary font-semibold'
                         : 'text-heron-primary hover:bg-heron-brand/5'
                     }`}
                   >

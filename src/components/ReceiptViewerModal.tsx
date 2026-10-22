@@ -89,9 +89,9 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div className="relative w-full max-w-6xl h-[90vh] bg-heron-bg border border-heron-border shadow-2xl flex flex-col md:flex-row overflow-hidden">
         {/* Main Left: Receipt Image Preview Stage */}
-        <div className="relative flex-1 bg-[#111116] flex flex-col border-b md:border-b-0 md:border-r border-heron-borderDark overflow-hidden">
+        <div className="relative flex-1 bg-[#111116] flex flex-col border-b md:border-b-0 md:border-r border-heron-border-dark overflow-hidden">
           {/* Zoom controls floating bar */}
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#18181E]/90 backdrop-blur-sm border border-heron-borderDark px-3 py-1.5 text-xs text-white">
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#18181E]/90 backdrop-blur-sm border border-heron-border-dark px-3 py-1.5 text-xs text-white">
             <button
               onClick={handleZoomOut}
               className="p-1 hover:text-heron-brand transition-colors cursor-pointer"
@@ -107,7 +107,7 @@ export const ReceiptViewerModal: React.FC<ReceiptViewerModalProps> = ({
             >
               <ZoomIn className="w-4 h-4" />
             </button>
-            <div className="w-[1px] h-3 bg-heron-borderDark mx-1" />
+            <div className="w-[1px] h-3 bg-heron-border-dark mx-1" />
             <button
               onClick={handleResetZoom}
               className="p-1 hover:text-heron-brand transition-colors cursor-pointer"

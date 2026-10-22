@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onNewPayment}
             aria-label="ADD PAYMENT"
             title="Record Payment"
-            className="btn-heron group relative inline-flex items-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brandHover text-white text-xs font-sans font-semibold tracking-wider uppercase px-4 sm:px-5 py-2 sm:py-2.5 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
+            className="btn-heron group relative inline-flex items-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover text-white text-xs font-sans font-semibold tracking-wider uppercase px-4 sm:px-5 py-2 sm:py-2.5 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 active:scale-[0.98] cursor-pointer shadow-sm"
           >
             <Plus className="w-3.5 h-3.5 transition-transform group-hover:rotate-90 duration-200 text-white" />
             <span>ADD PAYMENT</span>

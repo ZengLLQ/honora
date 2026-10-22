@@ -188,8 +188,8 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
 
         {/* Warning Callout if Replace Selected */}
         {mode === 'replace' && (
-          <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 mb-5 flex items-start gap-2.5 text-xs text-amber-900 font-sans">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 mb-5 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200 font-sans">
+            <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold uppercase tracking-wider block mb-0.5">
                 Warning: Permanent Replacement
@@ -216,7 +216,7 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
             className={`btn-heron px-6 py-2.5 text-xs font-sans tracking-wider uppercase text-white font-semibold transition-colors disabled:opacity-50 flex items-center gap-2 cursor-pointer shadow-sm ${
               mode === 'replace'
                 ? 'bg-amber-600 hover:bg-amber-700'
-                : 'bg-heron-brand hover:bg-heron-brandHover'
+                : 'bg-heron-brand hover:bg-heron-brand-hover'
             }`}
           >
             {isImporting ? (
