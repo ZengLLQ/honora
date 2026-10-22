@@ -889,6 +889,9 @@ describe('UI Components', () => {
       const brandLogos = screen.getAllByTestId('brand-logo');
       expect(brandLogos.length).toBe(1);
 
+      // Verify Heron AI eyebrow badge remains cleanly positioned above hero title
+      expect(screen.getByText('HONORA · FINANCIAL LEDGER')).toBeInTheDocument();
+
       expect(screen.queryByText('PAYMENT RECORDS.')).not.toBeInTheDocument();
       expect(screen.queryByText(/Personal tutor payment ledger and bank transfer receipt archive/i)).not.toBeInTheDocument();
       expect(screen.queryByText('PAYMENT LEDGER')).not.toBeInTheDocument();
