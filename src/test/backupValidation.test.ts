@@ -136,4 +136,57 @@ describe('backupValidation unit tests', () => {
     const res = validateBackupData(invalid);
     expect(res.valid).toBe(false);
   });
+
+  it('rejects receipts with empty or whitespace-only base64 data', () => {
+    const invalid = {
+      ...validBackup,
+      receipts: [{ id: 'receipt_1', data_base64: '   ' }],
+    };
+    const res = validateBackupData(invalid);
+    expect(res.valid).toBe(false);
+  });
+
+  it('strips data URL prefix and whitespace from receipt base64', () => {
+    const clone = JSON.parse(JSON.stringify(validBackup));
+    clone.receipts = [
+      {
+        id: 'rec_data_url',
+        mime_type: 'image/png',
+        data_base64: '  data:image/png;base64, aGVsbG8gd29ybGQ= \n',
+      },
+    ];
+    const res = validateBackupData(clone);
+    expect(res.valid).toBe(true);
+    if (res.valid) {
+      expect(res.backup.receipts[0].data_base64).toBe('aGVsbG8gd29ybGQ=');
+    }
+  });
+
+  it('backfills missing created_at and updated_at and rounds float amounts', () => {
+    const rawData = {
+      app: 'Honora',
+      schema_version: 1,
+      version: '1.1.0',
+      records: [
+        {
+          id: 'rec-float',
+          student_name: '  Trimmed Name  ',
+          payment_date: '2026-10-15',
+          amount_idr: 1250000.75,
+        },
+      ],
+      students: [{ name: '  Trimmed Name  ' }],
+    };
+
+    const res = validateBackupData(rawData);
+    expect(res.valid).toBe(true);
+    if (res.valid) {
+      expect(res.backup.records[0].amount_idr).toBe(1250001);
+      expect(res.backup.records[0].student_name).toBe('Trimmed Name');
+      expect(typeof res.backup.records[0].created_at).toBe('string');
+      expect(res.backup.records[0].created_at).toBe(res.backup.records[0].updated_at);
+      expect(res.backup.students[0].name).toBe('Trimmed Name');
+      expect(typeof res.backup.students[0].created_at).toBe('string');
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Database, X, CheckCircle2 } from 'lucide-react';
 import type { DatabaseBackup, ImportMode } from '../types/payment';
 import { formatDateDisplay } from '../utils/formatters';
@@ -18,6 +18,19 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
 }) => {
   const [mode, setMode] = useState<ImportMode>('merge');
   const [isImporting, setIsImporting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isImporting) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isImporting, onClose]);
 
   if (!isOpen || !backup) return null;
 
@@ -40,9 +53,13 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="import-modal-title"
+      onClick={!isImporting ? onClose : undefined}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-heron-primary/75 backdrop-blur-sm"
     >
-      <div className="w-full max-w-lg bg-heron-bg border border-heron-border shadow-2xl p-6 sm:p-8">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg bg-heron-bg border border-heron-border shadow-2xl p-6 sm:p-8"
+      >
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div className="flex items-center gap-3">
@@ -109,7 +126,11 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
         </div>
 
         {/* Restore Mode Selection */}
-        <div className="mb-5 space-y-2.5">
+        <div
+          role="radiogroup"
+          aria-label="Restore Mode"
+          className="mb-5 space-y-2.5"
+        >
           <label className="block text-xs font-semibold uppercase tracking-wider text-heron-secondary font-sans mb-1.5">
             RESTORE MODE
           </label>
@@ -117,6 +138,8 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
           {/* Option: Merge */}
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'merge'}
             onClick={() => setMode('merge')}
             className={`w-full text-left p-3.5 border transition-all cursor-pointer font-sans ${
               mode === 'merge'
@@ -140,6 +163,8 @@ export const ImportConfirmModal: React.FC<ImportConfirmModalProps> = ({
           {/* Option: Replace */}
           <button
             type="button"
+            role="radio"
+            aria-checked={mode === 'replace'}
             onClick={() => setMode('replace')}
             className={`w-full text-left p-3.5 border transition-all cursor-pointer font-sans ${
               mode === 'replace'

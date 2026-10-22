@@ -46,7 +46,9 @@ export function validateBackupData(data: unknown): ValidationResult {
     };
   }
 
-  // Validate each record
+  const nowIso = new Date().toISOString();
+
+  // Validate and normalize each record
   for (let i = 0; i < obj.records.length; i++) {
     const r = obj.records[i];
     if (!r || typeof r !== 'object') {
@@ -92,6 +94,12 @@ export function validateBackupData(data: unknown): ValidationResult {
       };
     }
 
+    // Trim core strings and round integer amounts
+    rec.id = (rec.id as string).trim();
+    rec.student_name = (rec.student_name as string).trim();
+    rec.payment_date = (rec.payment_date as string).trim();
+    rec.amount_idr = Math.round(rec.amount_idr as number);
+
     // Normalize status if present
     if (rec.status !== undefined && rec.status !== null) {
       if (typeof rec.status !== 'string') {
@@ -103,6 +111,48 @@ export function validateBackupData(data: unknown): ValidationResult {
     } else {
       rec.status = 'PAID';
     }
+
+    // Ensure created_at and updated_at are valid strings
+    if (typeof rec.created_at !== 'string' || !rec.created_at.trim()) {
+      rec.created_at = nowIso;
+    } else {
+      rec.created_at = (rec.created_at as string).trim();
+    }
+
+    if (typeof rec.updated_at !== 'string' || !rec.updated_at.trim()) {
+      rec.updated_at = rec.created_at;
+    } else {
+      rec.updated_at = (rec.updated_at as string).trim();
+    }
+
+    // Normalize optional receipt and note fields
+    rec.note = typeof rec.note === 'string' && rec.note.trim() ? rec.note.trim() : null;
+    rec.receipt_storage_path =
+      typeof rec.receipt_storage_path === 'string' && rec.receipt_storage_path.trim()
+        ? rec.receipt_storage_path.trim()
+        : null;
+    rec.receipt_mime_type =
+      typeof rec.receipt_mime_type === 'string' && rec.receipt_mime_type.trim()
+        ? rec.receipt_mime_type.trim()
+        : null;
+    rec.receipt_original_size_bytes =
+      typeof rec.receipt_original_size_bytes === 'number' &&
+      Number.isFinite(rec.receipt_original_size_bytes)
+        ? Math.round(rec.receipt_original_size_bytes)
+        : null;
+    rec.receipt_compressed_size_bytes =
+      typeof rec.receipt_compressed_size_bytes === 'number' &&
+      Number.isFinite(rec.receipt_compressed_size_bytes)
+        ? Math.round(rec.receipt_compressed_size_bytes)
+        : null;
+    rec.receipt_width =
+      typeof rec.receipt_width === 'number' && Number.isFinite(rec.receipt_width)
+        ? Math.round(rec.receipt_width)
+        : null;
+    rec.receipt_height =
+      typeof rec.receipt_height === 'number' && Number.isFinite(rec.receipt_height)
+        ? Math.round(rec.receipt_height)
+        : null;
   }
 
   // Validate students if present
@@ -122,8 +172,12 @@ export function validateBackupData(data: unknown): ValidationResult {
         error: `Invalid backup file: Student at index ${i} is missing a valid name.`,
       };
     }
+    sRec.name = (sRec.name as string).trim();
+    sRec.created_at =
+      typeof sRec.created_at === 'string' && sRec.created_at.trim()
+        ? sRec.created_at.trim()
+        : nowIso;
   }
-
 
   // Validate receipts if present
   const receipts = Array.isArray(obj.receipts) ? obj.receipts : [];
@@ -142,12 +196,32 @@ export function validateBackupData(data: unknown): ValidationResult {
         error: `Invalid backup file: Receipt at index ${i} is missing an ID.`,
       };
     }
-    if (typeof rco.data_base64 !== 'string') {
+    if (typeof rco.data_base64 !== 'string' || !rco.data_base64.trim()) {
       return {
         valid: false,
         error: `Invalid backup file: Receipt at index ${i} is missing base64 data.`,
       };
     }
+
+    rco.id = (rco.id as string).trim();
+
+    // Strip data URL scheme (e.g. data:image/jpeg;base64,) and any embedded whitespace
+    let base64 = (rco.data_base64 as string).trim();
+    const commaIdx = base64.indexOf(',');
+    if (commaIdx !== -1 && base64.slice(0, commaIdx).includes('base64')) {
+      base64 = base64.slice(commaIdx + 1).trim();
+    }
+    rco.data_base64 = base64.replace(/\s+/g, '');
+    if (!rco.data_base64) {
+      return {
+        valid: false,
+        error: `Invalid backup file: Receipt at index ${i} has empty base64 data.`,
+      };
+    }
+    rco.mime_type =
+      typeof rco.mime_type === 'string' && rco.mime_type.trim()
+        ? rco.mime_type.trim()
+        : 'image/jpeg';
   }
 
   const backup: DatabaseBackup = {
@@ -155,9 +229,9 @@ export function validateBackupData(data: unknown): ValidationResult {
     schema_version: obj.schema_version,
     app: 'Honora',
     exported_at:
-      typeof obj.exported_at === 'string'
-        ? obj.exported_at
-        : new Date().toISOString(),
+      typeof obj.exported_at === 'string' && obj.exported_at.trim()
+        ? obj.exported_at.trim()
+        : nowIso,
     records: obj.records as DatabaseBackup['records'],
     students: students as DatabaseBackup['students'],
     receipts: receipts as DatabaseBackup['receipts'],

@@ -418,10 +418,31 @@ pub fn export_records_and_students(
     })?;
 
     let mut students = Vec::new();
+    let mut seen_names = std::collections::HashSet::new();
+
     for s in student_rows {
-        students.push(s?);
+        let student = s?;
+        let trimmed = student.name.trim().to_string();
+        if !trimmed.is_empty() && seen_names.insert(trimmed.to_lowercase()) {
+            students.push(BackupStudent {
+                name: trimmed,
+                created_at: student.created_at,
+            });
+        }
     }
 
+    // Ensure any student from payment records is also included in students list
+    for r in &records {
+        let trimmed = r.student_name.trim().to_string();
+        if !trimmed.is_empty() && seen_names.insert(trimmed.to_lowercase()) {
+            students.push(BackupStudent {
+                name: trimmed,
+                created_at: Some(r.created_at.clone()),
+            });
+        }
+    }
+
+    students.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok((records, students))
 }
 
@@ -442,10 +463,21 @@ pub fn import_database(
 
     for record in records {
         let name_trimmed = record.student_name.trim();
+        let created_at = if record.created_at.trim().is_empty() {
+            &now
+        } else {
+            &record.created_at
+        };
+        let updated_at = if record.updated_at.trim().is_empty() {
+            created_at
+        } else {
+            &record.updated_at
+        };
+
         if !name_trimmed.is_empty() {
             let _ = tx.execute(
                 "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, ?2)",
-                params![name_trimmed, record.created_at],
+                params![name_trimmed, created_at],
             );
         }
 
@@ -478,8 +510,8 @@ pub fn import_database(
                 record.receipt_height,
                 record.note,
                 status_val,
-                record.created_at,
-                record.updated_at,
+                created_at,
+                updated_at,
             ],
         )?;
     }

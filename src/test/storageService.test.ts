@@ -446,5 +446,59 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const dataUrl = await service.getReceiptDataUrl(records[0]);
     expect(dataUrl).toContain('data:image/jpeg;base64,');
   });
+
+  it('includes students derived from records during export even if STORE_STUDENTS was empty', async () => {
+    const service = getPaymentService();
+
+    // Create record directly
+    await service.createRecord({
+      student_name: 'Derived Student Name',
+      payment_date: '2026-10-22',
+      amount_idr: 750000,
+    });
+
+    const backup = await service.exportDatabase();
+    const studentNames = backup.students.map((s) => s.name);
+    expect(studentNames).toContain('Derived Student Name');
+  });
+
+  it('imports backup with data URL scheme in receipts seamlessly', async () => {
+    const service = getPaymentService();
+    const rawDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+    const backup = {
+      version: '1.1.0',
+      schema_version: 1,
+      app: 'Honora',
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [
+        {
+          id: 'rec-data-url-import',
+          student_name: 'Data URL Student',
+          payment_date: '2026-10-22',
+          amount_idr: 600000,
+          receipt_storage_path: 'receipt_data_url',
+          created_at: '2026-10-22T00:00:00Z',
+          updated_at: '2026-10-22T00:00:00Z',
+          status: 'PAID' as const,
+        },
+      ],
+      students: [{ name: 'Data URL Student' }],
+      receipts: [
+        {
+          id: 'receipt_data_url',
+          mime_type: 'image/png',
+          data_base64: rawDataUrl,
+        },
+      ],
+    };
+
+    const res = await service.importDatabase(backup, 'replace');
+    expect(res.receipts_count).toBe(1);
+
+    const rec = (await service.getRecords())[0];
+    const dataUrl = await service.getReceiptDataUrl(rec);
+    expect(dataUrl).toContain('data:image/png;base64,iVBORw0KGgo');
+  });
 });
 

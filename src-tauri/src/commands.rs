@@ -447,28 +447,87 @@ pub fn process_import(
     // Pre-decode all receipts to ensure zero corruption before any DB/disk mutation
     let mut decoded_receipts: Vec<(&str, Vec<u8>)> = Vec::with_capacity(backup.receipts.len());
     for (idx, r) in backup.receipts.iter().enumerate() {
-        if r.id.trim().is_empty() {
+        let clean_id = r.id.trim();
+        if clean_id.is_empty() {
             return Err(format!("Invalid receipt at index {}: missing receipt ID.", idx));
         }
-        let bytes = BASE64.decode(r.data_base64.trim()).map_err(|_| {
+
+        // Clean data_base64: strip any data URL prefix and whitespace
+        let raw_b64 = r.data_base64.trim();
+        let stripped_b64 = if let Some(comma_pos) = raw_b64.find(',') {
+            if raw_b64[..comma_pos].contains("base64") {
+                &raw_b64[comma_pos + 1..]
+            } else {
+                raw_b64
+            }
+        } else {
+            raw_b64
+        };
+        let sanitized_b64: String = stripped_b64.chars().filter(|c| !c.is_whitespace()).collect();
+
+        let bytes = BASE64.decode(&sanitized_b64).map_err(|_| {
             format!("Invalid receipt at index {}: corrupted base64 data.", idx)
         })?;
-        decoded_receipts.push((&r.id, bytes));
+        decoded_receipts.push((clean_id, bytes));
     }
 
-    // If replacing, clean existing receipt files
+    let receipts_dir = storage::get_receipts_dir(app_data_dir).map_err(|e| e.to_string())?;
+
     if mode_clean == "replace" {
-        let _ = storage::clear_all_receipts(app_data_dir);
-    }
+        // Atomic staging for replace mode:
+        // 1. Move current receipts directory to a temporary backup path
+        let temp_backup_dir = app_data_dir.join(format!("receipts_backup_{}", uuid::Uuid::new_v4()));
+        let had_existing_dir = receipts_dir.exists();
+        if had_existing_dir {
+            std::fs::rename(&receipts_dir, &temp_backup_dir)
+                .map_err(|e| format!("Failed to stage receipts replacement: {}", e))?;
+        }
 
-    // Commit DB changes with transaction
-    db::import_database(conn, &backup.records, &backup.students, &mode_clean)
-        .map_err(|e| format!("Database import failed: {}", e))?;
+        // 2. Create fresh receipts directory
+        if let Err(e) = std::fs::create_dir_all(&receipts_dir) {
+            if had_existing_dir {
+                let _ = std::fs::rename(&temp_backup_dir, &receipts_dir);
+            }
+            return Err(format!("Failed to initialize receipts directory: {}", e));
+        }
 
-    // Save all receipts to disk
-    for (receipt_id, data) in decoded_receipts {
-        storage::save_backup_receipt(app_data_dir, receipt_id, &data)
-            .map_err(|e| format!("Failed to save receipt file: {}", e))?;
+        // 3. Write all new receipts into the fresh receipts directory
+        for (receipt_id, data) in &decoded_receipts {
+            if let Err(e) = storage::save_backup_receipt(app_data_dir, receipt_id, data) {
+                // Abort and restore previous receipts directory
+                let _ = std::fs::remove_dir_all(&receipts_dir);
+                if had_existing_dir {
+                    let _ = std::fs::rename(&temp_backup_dir, &receipts_dir);
+                }
+                return Err(format!("Failed to save receipt file {}: {}", receipt_id, e));
+            }
+        }
+
+        // 4. Commit database changes inside SQLite transaction
+        if let Err(e) = db::import_database(conn, &backup.records, &backup.students, &mode_clean) {
+            // Abort and restore previous receipts directory
+            let _ = std::fs::remove_dir_all(&receipts_dir);
+            if had_existing_dir {
+                let _ = std::fs::rename(&temp_backup_dir, &receipts_dir);
+            }
+            return Err(format!("Database import failed: {}", e));
+        }
+
+        // 5. Success! Clean up the temporary backup directory
+        if had_existing_dir {
+            let _ = std::fs::remove_dir_all(&temp_backup_dir);
+        }
+    } else {
+        // Merge mode:
+        // 1. Write all receipts to disk first
+        for (receipt_id, data) in &decoded_receipts {
+            storage::save_backup_receipt(app_data_dir, receipt_id, data)
+                .map_err(|e| format!("Failed to save receipt file: {}", e))?;
+        }
+
+        // 2. Commit database changes inside SQLite transaction
+        db::import_database(conn, &backup.records, &backup.students, &mode_clean)
+            .map_err(|e| format!("Database import failed: {}", e))?;
     }
 
     Ok(ImportResult {
@@ -654,6 +713,131 @@ mod tests {
         assert_eq!(read_bytes, web_receipt_data);
 
         let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_process_import_replace_rollback_on_failure() {
+        let temp_dir = env::temp_dir().join(format!("tutor_rollback_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let mut conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        // 1. Existing initial receipt file
+        let existing_receipt_data = b"precious existing receipt";
+        storage::save_receipt_file(&temp_dir, "existing-rec", "jpg", existing_receipt_data).unwrap();
+
+        // 2. Incoming backup with an invalid record that will fail validation or DB insertion
+        let corrupt_backup = DatabaseBackup {
+            version: "1.1.0".to_string(),
+            schema_version: 1,
+            app: "Honora".to_string(),
+            exported_at: "2026-10-22T08:00:00Z".to_string(),
+            records: vec![PaymentRecord {
+                id: "".to_string(), // Invalid empty ID triggers error
+                student_name: "Failed Student".to_string(),
+                payment_date: "2026-10-22".to_string(),
+                amount_idr: 100_000,
+                receipt_storage_path: None,
+                receipt_mime_type: None,
+                receipt_original_size_bytes: None,
+                receipt_compressed_size_bytes: None,
+                receipt_width: None,
+                receipt_height: None,
+                note: None,
+                status: None,
+                created_at: "".to_string(),
+                updated_at: "".to_string(),
+            }],
+            students: vec![],
+            receipts: vec![],
+        };
+
+        // 3. Attempt import in "replace" mode - must fail
+        let import_err = process_import(&mut conn, &temp_dir, corrupt_backup, "replace".to_string());
+        assert!(import_err.is_err());
+
+        // 4. Verify existing receipt file is NOT lost!
+        let read_existing = storage::read_receipt_file(&temp_dir, "receipts/existing-rec.jpg");
+        assert!(read_existing.is_ok());
+        assert_eq!(read_existing.unwrap(), existing_receipt_data);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_process_import_handles_data_url_scheme_and_newlines() {
+        let temp_dir = env::temp_dir().join(format!("tutor_data_url_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let mut conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        let raw_data = b"receipt image binary content";
+        let raw_base64 = BASE64.encode(raw_data);
+        let formatted_base64 = format!("  data:image/jpeg;base64, {}\n\r ", raw_base64);
+
+        let backup = DatabaseBackup {
+            version: "1.1.0".to_string(),
+            schema_version: 1,
+            app: "Honora".to_string(),
+            exported_at: "2026-10-22T08:00:00Z".to_string(),
+            records: vec![PaymentRecord {
+                id: "rec-url-scheme".to_string(),
+                student_name: "Scheme Student".to_string(),
+                payment_date: "2026-10-22".to_string(),
+                amount_idr: 450_000,
+                receipt_storage_path: Some("receipts/rec-url-scheme.jpg".to_string()),
+                receipt_mime_type: Some("image/jpeg".to_string()),
+                receipt_original_size_bytes: None,
+                receipt_compressed_size_bytes: None,
+                receipt_width: None,
+                receipt_height: None,
+                note: None,
+                status: Some("PAID".to_string()),
+                created_at: "2026-10-22T00:00:00Z".to_string(),
+                updated_at: "2026-10-22T00:00:00Z".to_string(),
+            }],
+            students: vec![],
+            receipts: vec![BackupReceipt {
+                id: "receipts/rec-url-scheme.jpg".to_string(),
+                mime_type: Some("image/jpeg".to_string()),
+                data_base64: formatted_base64,
+            }],
+        };
+
+        let res = process_import(&mut conn, &temp_dir, backup, "replace".to_string()).unwrap();
+        assert_eq!(res.receipts_count, 1);
+
+        let read_bytes = storage::read_receipt_file(&temp_dir, "receipts/rec-url-scheme.jpg").unwrap();
+        assert_eq!(read_bytes, raw_data);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_process_import_serde_tolerates_missing_optional_fields() {
+        let json_str = r#"{
+            "version": "1.1.0",
+            "schema_version": 1,
+            "app": "Honora",
+            "exported_at": "2026-10-22T08:00:00Z",
+            "records": [
+                {
+                    "id": "rec-serde-test",
+                    "student_name": "Serde Student",
+                    "payment_date": "2026-10-22",
+                    "amount_idr": 350000
+                }
+            ]
+        }"#;
+
+        let backup: DatabaseBackup = serde_json::from_str(json_str).unwrap();
+        assert_eq!(backup.records.len(), 1);
+        assert_eq!(backup.records[0].created_at, "");
+        assert_eq!(backup.records[0].updated_at, "");
+        assert_eq!(backup.students.len(), 0);
+        assert_eq!(backup.receipts.len(), 0);
     }
 }
 

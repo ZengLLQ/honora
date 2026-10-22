@@ -1010,6 +1010,61 @@ describe('UI Components', () => {
       fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+
+    it('closes on Escape key press when not importing', () => {
+      const onClose = vi.fn();
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={onClose}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('closes on backdrop click', () => {
+      const onClose = vi.fn();
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={onClose}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      const dialog = screen.getByRole('dialog');
+      fireEvent.click(dialog);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('has accessible radiogroup with aria-checked states', () => {
+      render(
+        <ImportConfirmModal
+          isOpen={true}
+          backup={sampleBackup}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+
+      const radiogroup = screen.getByRole('radiogroup', { name: 'Restore Mode' });
+      expect(radiogroup).toBeInTheDocument();
+
+      const mergeRadio = screen.getByRole('radio', { name: /Merge with Existing Data/i });
+      const replaceRadio = screen.getByRole('radio', { name: /Clean Replace \(Full Restore\)/i });
+
+      expect(mergeRadio).toHaveAttribute('aria-checked', 'true');
+      expect(replaceRadio).toHaveAttribute('aria-checked', 'false');
+
+      fireEvent.click(replaceRadio);
+      expect(mergeRadio).toHaveAttribute('aria-checked', 'false');
+      expect(replaceRadio).toHaveAttribute('aria-checked', 'true');
+    });
   });
 });
 

@@ -155,7 +155,8 @@ export function App() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Asynchronously revoke to give browser time to initiate download stream
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
 
       showFeedback(
         'success',
@@ -179,6 +180,18 @@ export function App() {
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Reset file input so selecting the same file again works
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    // Safety guard against massive corrupt files (max 150 MB)
+    const MAX_BACKUP_SIZE_BYTES = 150 * 1024 * 1024;
+    if (file.size > MAX_BACKUP_SIZE_BYTES) {
+      showFeedback('error', 'Backup file exceeds maximum allowed size (150 MB).');
+      return;
+    }
 
     try {
       const text = await file.text();

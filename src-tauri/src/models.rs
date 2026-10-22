@@ -14,7 +14,9 @@ pub struct PaymentRecord {
     pub receipt_height: Option<u32>,
     pub note: Option<String>,
     pub status: Option<String>,
+    #[serde(default)]
     pub created_at: String,
+    #[serde(default)]
     pub updated_at: String,
 }
 
@@ -97,6 +99,7 @@ pub struct DatabaseBackup {
     pub schema_version: u32,
     pub app: String,
     pub exported_at: String,
+    #[serde(default)]
     pub records: Vec<PaymentRecord>,
     #[serde(default)]
     pub students: Vec<BackupStudent>,

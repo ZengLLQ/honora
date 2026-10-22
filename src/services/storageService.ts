@@ -567,14 +567,19 @@ class WebIndexedDBPaymentService implements IPaymentService {
           resolve('');
           return;
         }
-        if (req.result.data && (req.result.data instanceof Uint8Array || ArrayBuffer.isView(req.result.data))) {
+        if (req.result.data instanceof ArrayBuffer) {
+          const view = new Uint8Array(req.result.data);
+          const base64 = uint8ArrayToBase64(view);
+          resolve(`data:${req.result.mime || 'image/jpeg'};base64,${base64}`);
+        } else if (req.result.data && (req.result.data instanceof Uint8Array || ArrayBuffer.isView(req.result.data))) {
           const view = req.result.data instanceof Uint8Array
             ? req.result.data
             : new Uint8Array(req.result.data.buffer, req.result.data.byteOffset, req.result.data.byteLength);
           const base64 = uint8ArrayToBase64(view);
           resolve(`data:${req.result.mime || 'image/jpeg'};base64,${base64}`);
         } else if (req.result.base64) {
-          resolve(`data:${req.result.mime || 'image/jpeg'};base64,${req.result.base64}`);
+          const cleaned = cleanBase64String(req.result.base64);
+          resolve(`data:${req.result.mime || 'image/jpeg'};base64,${cleaned}`);
         } else {
           resolve('');
         }
@@ -594,16 +599,35 @@ class WebIndexedDBPaymentService implements IPaymentService {
       req.onerror = () => reject(req.error);
     });
 
-    // 2. Get all students
+    // 2. Get all students and ensure all distinct record student names are included
     let students: BackupStudent[] = [];
+    const seenStudentNames = new Set<string>();
+
     if (db.objectStoreNames.contains(STORE_STUDENTS)) {
-      students = await new Promise<BackupStudent[]>((resolve, reject) => {
+      const rawStudents = await new Promise<BackupStudent[]>((resolve, reject) => {
         const tx = db.transaction(STORE_STUDENTS, 'readonly');
         const req = tx.objectStore(STORE_STUDENTS).getAll();
         req.onsuccess = () => resolve((req.result || []) as BackupStudent[]);
         req.onerror = () => reject(req.error);
       });
+      for (const st of rawStudents) {
+        const trimmed = st.name?.trim();
+        if (trimmed && !seenStudentNames.has(trimmed.toLowerCase())) {
+          seenStudentNames.add(trimmed.toLowerCase());
+          students.push({ name: trimmed, created_at: st.created_at });
+        }
+      }
     }
+
+    for (const rec of records) {
+      const trimmed = rec.student_name?.trim();
+      if (trimmed && !seenStudentNames.has(trimmed.toLowerCase())) {
+        seenStudentNames.add(trimmed.toLowerCase());
+        students.push({ name: trimmed, created_at: rec.created_at });
+      }
+    }
+
+    students.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
     // 3. Get all receipts and convert to base64
     const receipts = await new Promise<BackupReceipt[]>((resolve, reject) => {
@@ -614,13 +638,15 @@ class WebIndexedDBPaymentService implements IPaymentService {
         const rawReceipts = (req.result || []) as {
           id: string;
           mime?: string;
-          data?: Uint8Array | ArrayBufferView;
+          data?: ArrayBuffer | Uint8Array | ArrayBufferView;
           base64?: string;
         }[];
         for (const r of rawReceipts) {
           if (!r.id) continue;
           let base64 = '';
-          if (r.data && (r.data instanceof Uint8Array || ArrayBuffer.isView(r.data))) {
+          if (r.data instanceof ArrayBuffer) {
+            base64 = uint8ArrayToBase64(new Uint8Array(r.data));
+          } else if (r.data && (r.data instanceof Uint8Array || ArrayBuffer.isView(r.data))) {
             const view =
               r.data instanceof Uint8Array
                 ? r.data
@@ -631,7 +657,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
                   );
             base64 = uint8ArrayToBase64(view);
           } else if (r.base64) {
-            base64 = r.base64;
+            base64 = cleanBase64String(r.base64);
           }
           list.push({
             id: r.id,
@@ -742,8 +768,18 @@ class WebIndexedDBPaymentService implements IPaymentService {
 }
 
 
+function cleanBase64String(raw: string): string {
+  let cleaned = raw.trim();
+  const commaIdx = cleaned.indexOf(',');
+  if (commaIdx !== -1 && cleaned.slice(0, commaIdx).includes('base64')) {
+    cleaned = cleaned.slice(commaIdx + 1).trim();
+  }
+  return cleaned.replace(/\s+/g, '');
+}
+
 function base64ToUint8Array(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+  const cleaned = cleanBase64String(base64);
+  const binaryString = atob(cleaned);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -754,9 +790,11 @@ function base64ToUint8Array(base64: string): Uint8Array {
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
+  const chunkSize = 32768;
   const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
   return btoa(binary);
 }
