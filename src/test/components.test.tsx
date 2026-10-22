@@ -601,6 +601,129 @@ describe('UI Components', () => {
       fireEvent.keyDown(input, { key: 'Escape' });
       expect(screen.queryByText('Alice Smith')).not.toBeInTheDocument();
     });
+
+    it('toggles dropdown when chevron toggle button is clicked', () => {
+      render(
+        <StudentCombobox
+          value=""
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const toggleBtn = screen.getByLabelText('Toggle student suggestions list');
+      // Initially closed
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+      // Click to open
+      fireEvent.click(toggleBtn);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+      // Click to close
+      fireEvent.click(toggleBtn);
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    it('supports diacritic-insensitive filtering (e.g. renee matches Renée)', () => {
+      render(
+        <StudentCombobox
+          value="renee"
+          onChange={vi.fn()}
+          options={['Renée Dupont', 'John Doe']}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      expect(screen.getByText('Renée Dupont')).toBeInTheDocument();
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    });
+
+    it('renders long student names with truncation classes without crashing', () => {
+      const longName = 'Alexander Wolfeschlegelsteinhausenbergerdorff the Third Senior';
+      render(
+        <StudentCombobox
+          value=""
+          onChange={vi.fn()}
+          options={[longName]}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      const optionSpan = screen.getByText(longName);
+      expect(optionSpan).toHaveClass('truncate');
+      expect(optionSpan).toHaveClass('min-w-0');
+    });
+
+    it('manages ARIA attributes and aria-activedescendant during keyboard navigation', () => {
+      render(
+        <StudentCombobox
+          value=""
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      expect(input).not.toHaveAttribute('aria-activedescendant');
+
+      // ArrowDown opens and highlights first item
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      expect(input).toHaveAttribute('aria-expanded', 'true');
+      expect(input).toHaveAttribute('aria-activedescendant', expect.stringContaining('-option-0'));
+
+      // ArrowDown moves to second item
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      expect(input).toHaveAttribute('aria-activedescendant', expect.stringContaining('-option-1'));
+    });
+
+    it('closes dropdown when clicking the new student hint banner', () => {
+      render(
+        <StudentCombobox
+          value="Brand New Student"
+          onChange={vi.fn()}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      const hintBanner = screen.getByText('Auto-saves').closest('div');
+      expect(hintBanner).toBeInTheDocument();
+
+      fireEvent.click(hintBanner!);
+      expect(screen.queryByText('Auto-saves')).not.toBeInTheDocument();
+    });
+
+    it('selecting an option via click closes the dropdown and does not reopen on focus', () => {
+      const onChange = vi.fn();
+      render(
+        <StudentCombobox
+          value=""
+          onChange={onChange}
+          options={sampleStudents}
+          placeholder="Student name"
+        />
+      );
+
+      const input = screen.getByPlaceholderText('Student name');
+      fireEvent.focus(input);
+
+      const option = screen.getByText('Alice Smith');
+      fireEvent.click(option);
+
+      expect(onChange).toHaveBeenCalledWith('Alice Smith');
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
   });
 
   describe('ReceiptViewerModal', () => {

@@ -51,8 +51,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load existing student names for combobox suggestions
+  // Load existing student names for combobox suggestions whenever modal opens
   useEffect(() => {
+    if (!isOpen) return;
     let isCancelled = false;
     getPaymentService()
       .getStudentNames()
@@ -65,7 +66,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [isOpen]);
 
   // Load existing receipt if editing a record with receipt
   useEffect(() => {
@@ -260,7 +261,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               options={studentOptions}
               placeholder="Student name"
               required
-              autoFocus
+              autoFocus={!isEditing}
             />
           </div>
 

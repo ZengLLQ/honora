@@ -238,6 +238,10 @@ pub fn get_student_names(conn: &Connection) -> Result<Vec<String>> {
         let name = r?;
         let trimmed = name.trim().to_string();
         if !trimmed.is_empty() && seen.insert(trimmed.to_lowercase()) {
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO students (name, created_at) VALUES (?1, datetime('now'))",
+                params![trimmed],
+            );
             names.push(trimmed);
         }
     }

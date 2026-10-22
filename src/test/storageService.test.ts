@@ -241,4 +241,26 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     expect(namesAfterDelete).toContain('Budi Santoso');
     expect(namesAfterDelete).toContain('Clarissa Natalia');
   });
+
+  it('backfills legacy records into student store and preserves names after deletion', async () => {
+    const service = getPaymentService();
+
+    // Create a record
+    const legacyRec = await service.createRecord({
+      student_name: 'Zeng Ling Qiang',
+      payment_date: '2026-10-25',
+      amount_idr: 2000000,
+    });
+
+    // Fetch names - this triggers backfill
+    const names = await service.getStudentNames();
+    expect(names).toContain('Zeng Ling Qiang');
+
+    // Delete the record
+    await service.deleteRecord(legacyRec.id);
+
+    // Verify it is still retained
+    const namesAfter = await service.getStudentNames();
+    expect(namesAfter).toContain('Zeng Ling Qiang');
+  });
 });

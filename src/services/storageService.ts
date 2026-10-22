@@ -119,7 +119,27 @@ class WebIndexedDBPaymentService implements IPaymentService {
           db.createObjectStore(STORE_RECEIPTS, { keyPath: 'id' });
         }
         if (!db.objectStoreNames.contains(STORE_STUDENTS)) {
-          db.createObjectStore(STORE_STUDENTS, { keyPath: 'name' });
+          const studentStore = db.createObjectStore(STORE_STUDENTS, { keyPath: 'name' });
+          if (db.objectStoreNames.contains(STORE_RECORDS)) {
+            const tx = (event.target as IDBOpenDBRequest).transaction;
+            if (tx) {
+              const recordStore = tx.objectStore(STORE_RECORDS);
+              const cursorReq = recordStore.openCursor();
+              cursorReq.onsuccess = () => {
+                const cursor = cursorReq.result;
+                if (cursor) {
+                  const rawName = (cursor.value as PaymentRecord)?.student_name?.trim();
+                  if (rawName) {
+                    studentStore.put({
+                      name: rawName,
+                      created_at: cursor.value.created_at || new Date().toISOString(),
+                    });
+                  }
+                  cursor.continue();
+                }
+              };
+            }
+          }
         }
       };
 
@@ -429,6 +449,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
     }
 
     // 2. Scan STORE_RECORDS for any records
+    const missingInStudents: string[] = [];
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_RECORDS, 'readonly');
       const store = tx.objectStore(STORE_RECORDS);
@@ -441,6 +462,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
             const key = raw.toLowerCase();
             if (!nameMap.has(key)) {
               nameMap.set(key, raw);
+              missingInStudents.push(raw);
             }
           }
         }
@@ -448,6 +470,20 @@ class WebIndexedDBPaymentService implements IPaymentService {
       };
       req.onerror = () => reject(req.error);
     });
+
+    // Asynchronously backfill missing names into STORE_STUDENTS to guarantee retention upon record deletion
+    if (missingInStudents.length > 0 && db.objectStoreNames.contains(STORE_STUDENTS)) {
+      try {
+        const writeTx = db.transaction(STORE_STUDENTS, 'readwrite');
+        const studentStore = writeTx.objectStore(STORE_STUDENTS);
+        const now = new Date().toISOString();
+        for (const name of missingInStudents) {
+          studentStore.put({ name, created_at: now });
+        }
+      } catch {
+        // Non-critical background migration
+      }
+    }
 
     const names = Array.from(nameMap.values()).sort((a, b) =>
       a.localeCompare(b, undefined, { sensitivity: 'base' })

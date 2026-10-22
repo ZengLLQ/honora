@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
 export interface StudentComboboxProps {
@@ -12,6 +12,13 @@ export interface StudentComboboxProps {
   id?: string;
   name?: string;
 }
+
+// Utility to normalize string (lowercase + strip diacritics) for fuzzy matching
+const normalizeText = (str: string): string =>
+  str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 
 export const StudentCombobox: React.FC<StudentComboboxProps> = ({
   value,
@@ -28,6 +35,7 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isSelectingRef = useRef(false);
   const listboxId = useId();
 
   // Close when clicking outside
@@ -45,25 +53,43 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
     };
   }, []);
 
-  const trimmedQuery = value.trim().toLowerCase();
+  const trimmedQuery = value.trim();
+  const normalizedQuery = normalizeText(trimmedQuery);
 
-  // Filter options based on typed input
+  // Filter options based on typed input (accent-insensitive & case-insensitive)
   const filteredOptions = options.filter((opt) => {
-    if (!trimmedQuery) return true;
-    return opt.toLowerCase().includes(trimmedQuery);
+    if (!normalizedQuery) return true;
+    return normalizeText(opt).includes(normalizedQuery);
   });
 
   const isExactMatch = options.some(
-    (opt) => opt.toLowerCase() === trimmedQuery
+    (opt) => normalizeText(opt.trim()) === normalizedQuery
   );
   const showNewStudentHint = Boolean(trimmedQuery && !isExactMatch);
 
-  const handleSelect = (selectedName: string) => {
-    onChange(selectedName);
-    setIsOpen(false);
-    setHighlightedIndex(-1);
-    inputRef.current?.focus();
-  };
+  // Scroll active item into view during keyboard navigation
+  useEffect(() => {
+    if (isOpen && highlightedIndex >= 0) {
+      const activeElement = document.getElementById(`${listboxId}-option-${highlightedIndex}`);
+      if (typeof activeElement?.scrollIntoView === 'function') {
+        activeElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedIndex, isOpen, listboxId]);
+
+  const handleSelect = useCallback(
+    (selectedName: string) => {
+      isSelectingRef.current = true;
+      onChange(selectedName);
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      inputRef.current?.focus();
+      setTimeout(() => {
+        isSelectingRef.current = false;
+      }, 150);
+    },
+    [onChange]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (disabled) return;
@@ -125,15 +151,21 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
             setHighlightedIndex(-1);
           }}
           onFocus={() => {
+            if (isSelectingRef.current) return;
             if (options.length > 0 || showNewStudentHint) {
               setIsOpen(true);
             }
           }}
           onKeyDown={handleKeyDown}
           role="combobox"
-          aria-expanded={isOpen}
+          aria-expanded={isOpen && hasDropdownContent}
           aria-haspopup="listbox"
-          aria-controls={isOpen ? listboxId : undefined}
+          aria-controls={isOpen && filteredOptions.length > 0 ? listboxId : undefined}
+          aria-activedescendant={
+            isOpen && highlightedIndex >= 0
+              ? `${listboxId}-option-${highlightedIndex}`
+              : undefined
+          }
           aria-autocomplete="list"
           className="w-full bg-heron-surface border border-heron-border px-3.5 py-2.5 pr-10 text-sm font-sans text-heron-primary placeholder:text-heron-tertiary/60 focus:border-heron-brand focus:outline-none transition-colors"
         />
@@ -142,9 +174,18 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
           type="button"
           tabIndex={-1}
           disabled={disabled}
+          onMouseDown={(e) => {
+            // Prevent input blur to maintain seamless focus state
+            e.preventDefault();
+          }}
           onClick={() => {
-            setIsOpen((prev) => !prev);
-            inputRef.current?.focus();
+            setIsOpen((prev) => {
+              const next = !prev;
+              if (next) {
+                inputRef.current?.focus();
+              }
+              return next;
+            });
           }}
           aria-label="Toggle student suggestions list"
           className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-heron-tertiary hover:text-heron-primary cursor-pointer transition-colors"
@@ -159,28 +200,33 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
 
       {/* Suggestion Dropdown Popover */}
       {isOpen && hasDropdownContent && (
-        <div
-          id={listboxId}
-          role="listbox"
-          className="absolute left-0 right-0 top-full mt-1 z-50 bg-heron-surface border border-heron-border shadow-xl max-h-52 overflow-y-auto"
-        >
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-heron-surface border border-heron-border shadow-xl max-h-52 overflow-y-auto">
           {filteredOptions.length > 0 ? (
-            <ul className="divide-y divide-heron-border/40 py-1">
+            <ul
+              id={listboxId}
+              role="listbox"
+              className="divide-y divide-heron-border/40 py-1"
+            >
               {filteredOptions.map((opt, idx) => {
-                const isSelected = opt.toLowerCase() === trimmedQuery;
+                const isSelected = normalizeText(opt.trim()) === normalizedQuery;
                 const isHighlighted = idx === highlightedIndex;
+                const optionId = `${listboxId}-option-${idx}`;
 
                 return (
                   <li
-                    key={opt}
+                    key={`${opt}-${idx}`}
+                    id={optionId}
                     role="option"
-                    aria-selected={isSelected || isHighlighted}
+                    aria-selected={isSelected}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleSelect(opt);
                     }}
+                    onClick={() => {
+                      handleSelect(opt);
+                    }}
                     onMouseEnter={() => setHighlightedIndex(idx)}
-                    className={`px-3.5 py-2.5 text-xs sm:text-sm font-sans flex items-center justify-between cursor-pointer transition-colors ${
+                    className={`px-3.5 py-2.5 text-xs sm:text-sm font-sans flex items-center justify-between min-w-0 cursor-pointer transition-colors ${
                       isHighlighted
                         ? 'bg-heron-brand/10 text-heron-brand font-medium'
                         : isSelected
@@ -188,7 +234,7 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
                         : 'text-heron-primary hover:bg-heron-brand/5'
                     }`}
                   >
-                    <span className="truncate">{opt}</span>
+                    <span className="truncate min-w-0">{opt}</span>
                     {isSelected && (
                       <Check className="w-4 h-4 text-heron-brand shrink-0 ml-2" />
                     )}
@@ -199,8 +245,16 @@ export const StudentCombobox: React.FC<StudentComboboxProps> = ({
           ) : null}
 
           {showNewStudentHint && (
-            <div className="px-3.5 py-2 text-xs font-sans text-heron-secondary border-t border-heron-border/60 bg-heron-bg/60 flex items-center justify-between">
-              <span className="truncate mr-2">
+            <div
+              onClick={() => {
+                setIsOpen(false);
+                setHighlightedIndex(-1);
+              }}
+              className={`px-3.5 py-2 text-xs font-sans text-heron-secondary bg-heron-bg/60 flex items-center justify-between min-w-0 cursor-pointer hover:bg-heron-bg ${
+                filteredOptions.length > 0 ? 'border-t border-heron-border/60' : ''
+              }`}
+            >
+              <span className="truncate mr-2 min-w-0">
                 New student: <strong className="text-heron-primary">"{value.trim()}"</strong>
               </span>
               <span className="shrink-0 text-[10px] font-sans font-semibold uppercase tracking-wider text-heron-brand bg-heron-brand/10 px-1.5 py-0.5 border border-heron-brand/20">
