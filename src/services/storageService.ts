@@ -3,6 +3,7 @@ import type {
   BackupStudent,
   CreateRecordPayload,
   DatabaseBackup,
+  ExportResult,
   ImportMode,
   ImportResult,
   OptimizationResult,
@@ -27,6 +28,8 @@ export interface IPaymentService {
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
   exportDatabase(): Promise<DatabaseBackup>;
+  exportDatabaseWithDialog?(defaultFilename?: string): Promise<ExportResult>;
+  exportDatabaseToPath?(targetPath: string): Promise<ExportResult>;
   importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult>;
   close?(): Promise<void>;
 }
@@ -97,6 +100,14 @@ class TauriPaymentService implements IPaymentService {
 
   async exportDatabase(): Promise<DatabaseBackup> {
     return this.invoke<DatabaseBackup>('export_database');
+  }
+
+  async exportDatabaseWithDialog(defaultFilename?: string): Promise<ExportResult> {
+    return this.invoke<ExportResult>('export_database_with_dialog', { defaultFilename });
+  }
+
+  async exportDatabaseToPath(targetPath: string): Promise<ExportResult> {
+    return this.invoke<ExportResult>('export_database_to_path', { path: targetPath });
   }
 
   async importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult> {
@@ -671,7 +682,7 @@ class WebIndexedDBPaymentService implements IPaymentService {
     });
 
     return {
-      version: '1.1.3',
+      version: '1.2.0',
       schema_version: 1,
       app: 'Honora',
       exported_at: new Date().toISOString(),
@@ -679,6 +690,13 @@ class WebIndexedDBPaymentService implements IPaymentService {
       students,
       receipts,
     };
+  }
+
+  async exportDatabaseWithDialog(defaultFilename?: string): Promise<ExportResult> {
+    const backup = await this.exportDatabase();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const filename = defaultFilename || `honora-backup-${dateStr}.json`;
+    return exportDatabaseWeb(backup, filename);
   }
 
   async importDatabase(
@@ -797,6 +815,81 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
   }
   return btoa(binary);
+}
+
+export async function exportDatabaseWeb(
+  backup: DatabaseBackup,
+  defaultFilename: string
+): Promise<ExportResult> {
+  const jsonString = JSON.stringify(backup, null, 2);
+
+  // 1. Try File System Access API if available
+  if (
+    typeof window !== 'undefined' &&
+    'showSaveFilePicker' in window &&
+    typeof (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker === 'function'
+  ) {
+    try {
+      const picker = (
+        window as unknown as {
+          showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
+        }
+      ).showSaveFilePicker;
+
+      const handle = await picker({
+        suggestedName: defaultFilename,
+        types: [
+          {
+            description: 'JSON Backup (*.json)',
+            accept: {
+              'application/json': ['.json'],
+            },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(jsonString);
+      await writable.close();
+
+      return {
+        success: true,
+        cancelled: false,
+        records_count: backup.records.length,
+        receipts_count: backup.receipts?.length ?? 0,
+      };
+    } catch (err: unknown) {
+      // User cancelled the file picker dialog
+      if (err instanceof Error && err.name === 'AbortError') {
+        return {
+          success: false,
+          cancelled: true,
+          records_count: backup.records.length,
+          receipts_count: backup.receipts?.length ?? 0,
+        };
+      }
+      console.warn('showSaveFilePicker failed or denied, falling back to download link:', err);
+    }
+  }
+
+  // 2. Graceful fallback: <a download> blob mechanism
+  if (typeof document !== 'undefined') {
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = defaultFilename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  return {
+    success: true,
+    cancelled: false,
+    records_count: backup.records.length,
+    receipts_count: backup.receipts?.length ?? 0,
+  };
 }
 
 // -------------------------------------------------------------

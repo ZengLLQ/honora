@@ -115,3 +115,12 @@ pub struct ImportResult {
     pub mode: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportResult {
+    pub success: bool,
+    pub cancelled: bool,
+    pub path: Option<String>,
+    pub records_count: usize,
+    pub receipts_count: usize,
+}
+

@@ -1,8 +1,8 @@
 use crate::db;
 use crate::image_optimizer;
 use crate::models::{
-    BackupReceipt, CreateRecordPayload, DatabaseBackup, ImportResult, OptimizationResult,
-    PaymentRecord, PaymentSummary, RecordFilter, UpdateRecordPayload,
+    BackupReceipt, CreateRecordPayload, DatabaseBackup, ExportResult, ImportResult,
+    OptimizationResult, PaymentRecord, PaymentSummary, RecordFilter, UpdateRecordPayload,
 };
 use crate::storage;
 use crate::AppState;
@@ -398,7 +398,7 @@ pub fn process_export(
     }
 
     Ok(DatabaseBackup {
-        version: "1.1.3".to_string(),
+        version: "1.2.0".to_string(),
         schema_version: 1,
         app: "Honora".to_string(),
         exported_at: Utc::now().to_rfc3339(),
@@ -538,10 +538,89 @@ pub fn process_import(
     })
 }
 
+pub fn write_backup_to_path(
+    conn: &rusqlite::Connection,
+    app_data_dir: &std::path::Path,
+    target_path: &std::path::Path,
+) -> Result<ExportResult, String> {
+    let mut final_path = target_path.to_path_buf();
+    if final_path.extension().is_none() {
+        final_path.set_extension("json");
+    }
+
+    if let Some(parent) = final_path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create destination directory: {}", e))?;
+        }
+    }
+
+    let backup = process_export(conn, app_data_dir)?;
+    let json_bytes = serde_json::to_vec_pretty(&backup)
+        .map_err(|e| format!("Failed to serialize backup JSON: {}", e))?;
+
+    std::fs::write(&final_path, json_bytes)
+        .map_err(|e| format!("Failed to write backup file to disk: {}", e))?;
+
+    Ok(ExportResult {
+        success: true,
+        cancelled: false,
+        path: Some(final_path.to_string_lossy().to_string()),
+        records_count: backup.records.len(),
+        receipts_count: backup.receipts.len(),
+    })
+}
+
 #[tauri::command]
 pub fn export_database(state: State<'_, AppState>) -> Result<DatabaseBackup, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
     process_export(&conn, &state.app_data_dir)
+}
+
+#[tauri::command]
+pub fn export_database_to_path(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<ExportResult, String> {
+    let target = std::path::PathBuf::from(path.trim());
+    if target.as_os_str().is_empty() {
+        return Err("Export path cannot be empty".to_string());
+    }
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    write_backup_to_path(&conn, &state.app_data_dir, &target)
+}
+
+#[tauri::command]
+pub fn export_database_with_dialog(
+    state: State<'_, AppState>,
+    default_filename: Option<String>,
+) -> Result<ExportResult, String> {
+    let filename = default_filename
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            let now = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            format!("honora-backup-{}.json", now)
+        });
+
+    let chosen_path = rfd::FileDialog::new()
+        .set_file_name(&filename)
+        .add_filter("JSON Backup (*.json)", &["json"])
+        .save_file();
+
+    match chosen_path {
+        Some(path) => {
+            let conn = state.db.lock().map_err(|e| e.to_string())?;
+            write_backup_to_path(&conn, &state.app_data_dir, &path)
+        }
+        None => Ok(ExportResult {
+            success: false,
+            cancelled: true,
+            path: None,
+            records_count: 0,
+            receipts_count: 0,
+        }),
+    }
 }
 
 #[tauri::command]
@@ -595,7 +674,7 @@ mod tests {
         // 2. Export database
         let backup = process_export(&conn, &temp_dir).unwrap();
         assert_eq!(backup.app, "Honora");
-        assert_eq!(backup.version, "1.1.3");
+        assert_eq!(backup.version, "1.2.0");
         assert_eq!(backup.schema_version, 1);
         assert_eq!(backup.records.len(), 1);
         assert_eq!(backup.records[0].student_name, "Tutor Student");
@@ -838,6 +917,66 @@ mod tests {
         assert_eq!(backup.records[0].updated_at, "");
         assert_eq!(backup.students.len(), 0);
         assert_eq!(backup.receipts.len(), 0);
+    }
+
+    #[test]
+    fn test_write_backup_to_path_custom_location() {
+        let temp_dir = env::temp_dir().join(format!("tutor_cmd_export_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let conn = Connection::open_in_memory().unwrap();
+        db::init_db(&conn).unwrap();
+
+        let rec = PaymentRecord {
+            id: "rec-custom-1".to_string(),
+            student_name: "Custom Export Student".to_string(),
+            payment_date: "2026-10-22".to_string(),
+            amount_idr: 350_000,
+            receipt_storage_path: None,
+            receipt_mime_type: None,
+            receipt_original_size_bytes: None,
+            receipt_compressed_size_bytes: None,
+            receipt_width: None,
+            receipt_height: None,
+            note: Some("Custom location export note".to_string()),
+            status: Some("PAID".to_string()),
+            created_at: "2026-10-22T08:00:00Z".to_string(),
+            updated_at: "2026-10-22T08:00:00Z".to_string(),
+        };
+        db::create_record(&conn, &rec).unwrap();
+
+        // 1. Export to custom nested subfolder without .json extension (should auto-append .json)
+        let subfolder = temp_dir.join("sub").join("nested");
+        let target_without_ext = subfolder.join("my-custom-backup");
+        let result = write_backup_to_path(&conn, &temp_dir, &target_without_ext).unwrap();
+
+        assert!(result.success);
+        assert!(!result.cancelled);
+        assert_eq!(result.records_count, 1);
+        let expected_path = target_without_ext.with_extension("json");
+        assert_eq!(result.path, Some(expected_path.to_string_lossy().to_string()));
+        assert!(expected_path.exists());
+
+        // 2. Read and verify written file content
+        let content = fs::read_to_string(&expected_path).unwrap();
+        let parsed: DatabaseBackup = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.app, "Honora");
+        assert_eq!(parsed.version, "1.2.0");
+        assert_eq!(parsed.records.len(), 1);
+        assert_eq!(parsed.records[0].student_name, "Custom Export Student");
+
+        // 3. Roundtrip import test with the exported file
+        let mut target_conn = Connection::open_in_memory().unwrap();
+        db::init_db(&target_conn).unwrap();
+        let target_storage = temp_dir.join("import_storage");
+        fs::create_dir_all(&target_storage).unwrap();
+
+        let import_res = process_import(&mut target_conn, &target_storage, parsed, "replace".to_string()).unwrap();
+        assert_eq!(import_res.records_count, 1);
+        let imported_rec = db::get_record_by_id(&target_conn, "rec-custom-1").unwrap().unwrap();
+        assert_eq!(imported_rec.student_name, "Custom Export Student");
+
+        let _ = fs::remove_dir_all(&temp_dir);
     }
 }
 

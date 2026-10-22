@@ -84,6 +84,8 @@ pub fn run() {
             commands::toggle_payment_status,
             commands::get_student_names,
             commands::export_database,
+            commands::export_database_to_path,
+            commands::export_database_with_dialog,
             commands::import_database,
         ])
         .run(tauri::generate_context!())

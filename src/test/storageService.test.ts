@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import {
+  exportDatabaseWeb,
   getPaymentService,
   resetServiceInstanceForTesting,
 } from '../services/storageService';
-import type { CreateRecordPayload, UpdateRecordPayload } from '../types/payment';
+import type { CreateRecordPayload, DatabaseBackup, UpdateRecordPayload } from '../types/payment';
 
 describe('WebIndexedDBPaymentService Integration Tests', () => {
   beforeEach(async () => {
@@ -279,7 +280,7 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const backup = await service.exportDatabase();
     expect(backup.app).toBe('Honora');
     expect(backup.schema_version).toBe(1);
-    expect(backup.version).toBe('1.1.3');
+    expect(backup.version).toBe('1.2.0');
     expect(backup.records.length).toBe(1);
     expect(backup.records[0].student_name).toBe('Jessica Tan');
     expect(backup.students.length).toBe(1);
@@ -499,6 +500,139 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const rec = (await service.getRecords())[0];
     const dataUrl = await service.getReceiptDataUrl(rec);
     expect(dataUrl).toContain('data:image/png;base64,iVBORw0KGgo');
+  });
+
+  describe('Custom Save Location Export Tests', () => {
+    const dummyBackup: DatabaseBackup = {
+      app: 'Honora',
+      version: '1.2.0',
+      schema_version: 1,
+      exported_at: '2026-10-22T08:00:00Z',
+      records: [
+        {
+          id: 'rec-test-export',
+          student_name: 'Custom Location Student',
+          payment_date: '2026-10-22',
+          amount_idr: 450000,
+          created_at: '2026-10-22T00:00:00Z',
+          updated_at: '2026-10-22T00:00:00Z',
+          status: 'PAID',
+        },
+      ],
+      students: [{ name: 'Custom Location Student' }],
+      receipts: [],
+    };
+
+    it('exports via File System Access API when showSaveFilePicker is available', async () => {
+      const mockWritable = {
+        write: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const mockHandle = {
+        createWritable: vi.fn().mockResolvedValue(mockWritable),
+      };
+      const showSaveFilePickerMock = vi.fn().mockResolvedValue(mockHandle);
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-export.json');
+
+      expect(showSaveFilePickerMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          suggestedName: 'test-export.json',
+        })
+      );
+      expect(mockHandle.createWritable).toHaveBeenCalledTimes(1);
+      expect(mockWritable.write).toHaveBeenCalledWith(expect.stringContaining('Custom Location Student'));
+      expect(mockWritable.close).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.cancelled).toBe(false);
+      expect(result.records_count).toBe(1);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('gracefully handles user cancellation in showSaveFilePicker (AbortError)', async () => {
+      const abortError = new Error('The user aborted a request.');
+      abortError.name = 'AbortError';
+      const showSaveFilePickerMock = vi.fn().mockRejectedValue(abortError);
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-cancel.json');
+
+      expect(showSaveFilePickerMock).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(false);
+      expect(result.cancelled).toBe(true);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('falls back to download link if showSaveFilePicker throws non-abort error', async () => {
+      const permissionError = new Error('Permission denied.');
+      permissionError.name = 'NotAllowedError';
+      const showSaveFilePickerMock = vi.fn().mockRejectedValue(permissionError);
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const urlCreateSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+      const urlRevokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-fallback.json');
+
+      expect(showSaveFilePickerMock).toHaveBeenCalledTimes(1);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.cancelled).toBe(false);
+
+      clickSpy.mockRestore();
+      urlCreateSpy.mockRestore();
+      urlRevokeSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+
+    it('falls back to download link when showSaveFilePicker is not supported', async () => {
+      // Ensure showSaveFilePicker is not defined
+      const origPicker = (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+      delete (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker;
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const urlCreateSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+      const urlRevokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-no-picker.json');
+
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.cancelled).toBe(false);
+
+      clickSpy.mockRestore();
+      urlCreateSpy.mockRestore();
+      urlRevokeSpy.mockRestore();
+      if (origPicker !== undefined) {
+        (window as unknown as { showSaveFilePicker?: unknown }).showSaveFilePicker = origPicker;
+      }
+    });
+
+    it('service.exportDatabaseWithDialog delegates to exportDatabaseWeb on Web platform', async () => {
+      const service = getPaymentService();
+      await service.createRecord({
+        student_name: 'Dialog Test Student',
+        payment_date: '2026-10-22',
+        amount_idr: 750000,
+      });
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const urlCreateSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+      const urlRevokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const result = await service.exportDatabaseWithDialog!('custom-filename.json');
+      expect(result.success).toBe(true);
+      expect(result.cancelled).toBe(false);
+      expect(result.records_count).toBe(1);
+
+      clickSpy.mockRestore();
+      urlCreateSpy.mockRestore();
+      urlRevokeSpy.mockRestore();
+    });
   });
 });
 

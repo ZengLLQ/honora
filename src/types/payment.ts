@@ -100,3 +100,11 @@ export interface ImportResult {
   mode: ImportMode;
 }
 
+export interface ExportResult {
+  success: boolean;
+  cancelled: boolean;
+  path?: string | null;
+  records_count?: number;
+  receipts_count?: number;
+}
+

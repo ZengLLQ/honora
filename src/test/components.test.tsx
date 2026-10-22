@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { FinancialSummary } from '../components/FinancialSummary';
 import { FilterBar } from '../components/FilterBar';
 import { Header } from '../components/Header';
@@ -11,6 +11,7 @@ import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { ImportConfirmModal } from '../components/ImportConfirmModal';
 import { StudentCombobox } from '../components/StudentCombobox';
 import { App } from '../App';
+import { getPaymentService } from '../services/storageService';
 import type { DatabaseBackup, PaymentRecord, PaymentSummary, RecordFilter } from '../types/payment';
 
 describe('UI Components', () => {
@@ -920,6 +921,66 @@ describe('UI Components', () => {
         expect(screen.getByText('Start by recording your first tutoring payment.')).toBeInTheDocument();
       });
     });
+
+    it('shows concise confirmation toast when export succeeds', async () => {
+      const service = getPaymentService();
+      vi.spyOn(service, 'exportDatabaseWithDialog').mockResolvedValue({
+        success: true,
+        cancelled: false,
+        records_count: 0,
+        receipts_count: 0,
+      });
+
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'EXPORT DATABASE' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'EXPORT DATABASE' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Database exported successfully')).toBeInTheDocument();
+      });
+    });
+
+    it('gracefully handles user cancelling export dialog without error toast', async () => {
+      const service = getPaymentService();
+      vi.spyOn(service, 'exportDatabaseWithDialog').mockResolvedValue({
+        success: false,
+        cancelled: true,
+        records_count: 0,
+        receipts_count: 0,
+      });
+
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'EXPORT DATABASE' })).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'EXPORT DATABASE' }));
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
+      expect(screen.queryByText(/Failed to export database backup/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Database exported successfully/i)).not.toBeInTheDocument();
+    });
+
+    it('shows error toast when export throws an unexpected exception', async () => {
+      const service = getPaymentService();
+      vi.spyOn(service, 'exportDatabaseWithDialog').mockRejectedValue(new Error('Disk failure'));
+
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'EXPORT DATABASE' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'EXPORT DATABASE' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to export database backup.')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Header component', () => {
@@ -968,7 +1029,7 @@ describe('UI Components', () => {
 
   describe('ImportConfirmModal component', () => {
     const sampleBackup: DatabaseBackup = {
-      version: '1.1.3',
+      version: '1.2.0',
       schema_version: 1,
       app: 'Honora',
       exported_at: '2026-10-22T08:00:00Z',
@@ -994,7 +1055,7 @@ describe('UI Components', () => {
       );
 
       expect(screen.getByText('IMPORT DATABASE BACKUP')).toBeInTheDocument();
-      expect(screen.getByText(/ARCHIVE: Honora v1.1.3/i)).toBeInTheDocument();
+      expect(screen.getByText(/ARCHIVE: Honora v1.2.0/i)).toBeInTheDocument();
       expect(screen.getByText('Merge with Existing Data')).toBeInTheDocument();
       expect(screen.getByText('Clean Replace (Full Restore)')).toBeInTheDocument();
 

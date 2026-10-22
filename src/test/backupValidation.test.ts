@@ -4,7 +4,7 @@ import type { DatabaseBackup } from '../types/payment';
 
 describe('backupValidation unit tests', () => {
   const validBackup: DatabaseBackup = {
-    version: '1.1.3',
+    version: '1.2.0',
     schema_version: 1,
     app: 'Honora',
     exported_at: '2026-10-22T08:00:00.000Z',

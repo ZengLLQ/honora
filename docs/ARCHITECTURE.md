@@ -164,6 +164,20 @@ Honora v1.1.3 guarantees brand aesthetic cohesion across light and dark modes:
 - **Unified Identity**: Dark mode tokens now cleanly map `--color-heron-brand` to `#FA3600` and `--color-heron-brand-hover` to `#E03000`, matching light mode rather than drifting to purple/indigo.
 - **Component Uniformity**: Primary action buttons (`ADD PAYMENT`), geometric brand logo marks (`BrandLogo.tsx`), category section indicators, focus rings, and selection highlights are consistently rendered in the signature vibrant orange.
 
+### 3.8 Custom Save Location Export Architecture (v1.2.0)
+
+Honora v1.2.0 empowers users to pick their custom export location and filename instead of writing blindly to the default Downloads folder:
+- **Desktop Target (Tauri)**:
+  - Invokes `export_database_with_dialog` command via IPC bridge.
+  - Rust backend leverages native OS file dialog (`rfd::FileDialog`) configured with `.json` filters and a suggested default filename (`honora-backup-YYYY-MM-DD.json`).
+  - Upon user confirmation, `write_backup_to_path` serializes the database and compressed receipts archive, automatically creates parent directories if needed, ensures `.json` extension, and writes atomically/safely to disk.
+  - Cancellations return a clean `{ cancelled: true }` structure without triggering error feedback.
+- **Web Target (Browser)**:
+  - Detects native File System Access API (`window.showSaveFilePicker`). When available, opens the browser native Save As file picker for directory and filename selection, streaming JSON directly via `FileSystemWritableFileStream`.
+  - Gracefully catches `AbortError` when users cancel, exiting silently without error notifications.
+  - Automatically falls back to standard `<a download>` object URL generation if `showSaveFilePicker` is unavailable or denied.
+  - Displays concise, uniform confirmation: `"Database exported successfully"`.
+
 ---
 
 ## 4. Automatic Receipt Optimization Pipeline

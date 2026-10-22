@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
-import type { DatabaseBackup, ImportMode, PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
-import { getPaymentService } from './services/storageService';
+import type { DatabaseBackup, ExportResult, ImportMode, PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
+import { exportDatabaseWeb, getPaymentService, isTauriEnvironment } from './services/storageService';
 import { validateBackupData } from './services/backupValidation';
 import { getAvailableMonths } from './utils/formatters';
 import { useTheme } from './utils/theme';
@@ -145,24 +145,27 @@ export function App() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      const backup = await service.exportDatabase();
-      const jsonString = JSON.stringify(backup, null, 2);
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
       const dateStr = new Date().toISOString().split('T')[0];
-      a.href = url;
-      a.download = `honora-backup-${dateStr}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      // Asynchronously revoke to give browser time to initiate download stream
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      const defaultFilename = `honora-backup-${dateStr}.json`;
 
-      showFeedback(
-        'success',
-        `Database backup exported successfully (${backup.records.length} records, ${backup.receipts?.length ?? 0} receipts)`
-      );
+      let result: ExportResult;
+      if (isTauriEnvironment() && service.exportDatabaseWithDialog) {
+        result = await service.exportDatabaseWithDialog(defaultFilename);
+      } else if (service.exportDatabaseWithDialog) {
+        result = await service.exportDatabaseWithDialog(defaultFilename);
+      } else {
+        const backup = await service.exportDatabase();
+        result = await exportDatabaseWeb(backup, defaultFilename);
+      }
+
+      if (result.cancelled) {
+        // User cancelled the file save dialog — handle gracefully without error toast
+        return;
+      }
+
+      if (result.success) {
+        showFeedback('success', 'Database exported successfully');
+      }
     } catch (err) {
       console.error('Export failed:', err);
       showFeedback('error', 'Failed to export database backup.');
