@@ -240,6 +240,21 @@ describe('Theme System & Toggle', () => {
       fireEvent.click(button);
       expect(rotatingDiv.style.transform).toBe('rotate(1080deg)');
     });
+
+    it('uses text-heron-brand for the moon icon and contains zero purple/indigo classes', () => {
+      const { container } = render(<ThemeToggle theme="dark" onToggle={vi.fn()} />);
+      const svgElements = container.querySelectorAll('svg');
+      expect(svgElements.length).toBe(2);
+
+      // Verify the Moon icon has text-heron-brand and not text-indigo-400
+      const moonSvg = svgElements[1];
+      expect(moonSvg).toHaveClass('text-heron-brand');
+      expect(moonSvg).not.toHaveClass('text-indigo-400');
+
+      // Ensure no indigo or purple classes anywhere in container
+      expect(container.innerHTML).not.toContain('indigo');
+      expect(container.innerHTML).not.toContain('purple');
+    });
   });
 
   describe('Header Integration with ThemeToggle', () => {

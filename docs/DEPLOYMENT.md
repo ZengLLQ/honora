@@ -218,7 +218,7 @@ Because native macOS binary linking and code signing require Apple Darwin SDK / 
 Before deploying updates or releasing binaries, run the full verification pipeline:
 
 ```bash
-# 1. Run all frontend Vitest unit and integration tests (103 tests)
+# 1. Run all frontend Vitest unit and integration tests (107 tests)
 npm test
 
 # 2. Run all Rust backend unit tests (27 tests)

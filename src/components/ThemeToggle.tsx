@@ -49,7 +49,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
         {/* Moon Icon (Visible in Dark Mode) */}
         <Moon
-          className={`w-4 h-4 text-indigo-400 absolute transition-all duration-300 transform ${
+          className={`w-4 h-4 text-heron-brand absolute transition-all duration-300 transform ${
             isDark
               ? 'opacity-100 rotate-0 scale-100'
               : 'opacity-0 rotate-90 scale-0 pointer-events-none'

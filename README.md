@@ -118,7 +118,7 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 - **Deployment**: Zero-config Vercel deployment with client-side SPA routing (`vercel.json`).
 - **Test Suites**:
   - **Rust**: 27 unit tests verifying image magic byte detection, resizing dimensions, JPEG/PNG/WebP encoding, EXIF orientation correction, fallback preservation, SQLite CRUD, status filtering/migrations, database export, replace/merge imports, and receipt filesystem synchronization.
-  - **Vitest**: 106 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, backup schema validation, replace/merge restoration, status toggle concurrency locks, Header actions, Dark Mode detection, theme persistence, and celestial ThemeToggle micro-interactions.
+  - **Vitest**: 107 unit & component integration tests verifying currency formatting (`Rp 1.250.000`), byte units, compression math, zero-student initial state, IndexedDB lifecycle, backup schema validation, replace/merge restoration, status toggle concurrency locks, Header actions, Dark Mode detection, theme persistence, and celestial ThemeToggle micro-interactions.
 
 ---
 
