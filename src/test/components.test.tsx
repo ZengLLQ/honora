@@ -981,6 +981,27 @@ describe('UI Components', () => {
         expect(screen.getByText('Failed to export database backup.')).toBeInTheDocument();
       });
     });
+
+    it('shows error toast when export returns unsuccessful without cancellation', async () => {
+      const service = getPaymentService();
+      vi.spyOn(service, 'exportDatabaseWithDialog').mockResolvedValue({
+        success: false,
+        cancelled: false,
+        records_count: 0,
+        receipts_count: 0,
+      });
+
+      render(<App />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'EXPORT DATABASE' })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'EXPORT DATABASE' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to export database backup.')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('Header component', () => {

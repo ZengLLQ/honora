@@ -544,8 +544,22 @@ pub fn write_backup_to_path(
     target_path: &std::path::Path,
 ) -> Result<ExportResult, String> {
     let mut final_path = target_path.to_path_buf();
-    if final_path.extension().is_none() {
-        final_path.set_extension("json");
+    if final_path.is_dir() {
+        return Err("Export path must be a file, not a directory".to_string());
+    }
+
+    let has_json_ext = final_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.to_ascii_lowercase().ends_with(".json"))
+        .unwrap_or(false);
+
+    if !has_json_ext {
+        let new_file_name = match final_path.file_name().and_then(|n| n.to_str()) {
+            Some(name) => format!("{}.json", name),
+            None => "honora-backup.json".to_string(),
+        };
+        final_path.set_file_name(new_file_name);
     }
 
     if let Some(parent) = final_path.parent() {
@@ -591,11 +605,11 @@ pub fn export_database_to_path(
 }
 
 #[tauri::command]
-pub fn export_database_with_dialog(
+pub async fn export_database_with_dialog(
     state: State<'_, AppState>,
     default_filename: Option<String>,
 ) -> Result<ExportResult, String> {
-    let filename = default_filename
+    let mut filename = default_filename
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| {
@@ -603,10 +617,18 @@ pub fn export_database_with_dialog(
             format!("honora-backup-{}.json", now)
         });
 
-    let chosen_path = rfd::FileDialog::new()
-        .set_file_name(&filename)
-        .add_filter("JSON Backup (*.json)", &["json"])
-        .save_file();
+    if !filename.to_ascii_lowercase().ends_with(".json") {
+        filename = format!("{}.json", filename);
+    }
+
+    let chosen_path = tauri::async_runtime::spawn_blocking(move || {
+        rfd::FileDialog::new()
+            .set_file_name(&filename)
+            .add_filter("JSON Backup (*.json)", &["json"])
+            .save_file()
+    })
+    .await
+    .map_err(|e| format!("Dialog thread error: {}", e))?;
 
     match chosen_path {
         Some(path) => {
@@ -975,6 +997,26 @@ mod tests {
         assert_eq!(import_res.records_count, 1);
         let imported_rec = db::get_record_by_id(&target_conn, "rec-custom-1").unwrap().unwrap();
         assert_eq!(imported_rec.student_name, "Custom Export Student");
+
+        // 4. Edge-case test: dotted filename like "backup-2026.10.22" must preserve dots and become "backup-2026.10.22.json"
+        let dotted_target = subfolder.join("backup-2026.10.22");
+        let dotted_result = write_backup_to_path(&conn, &temp_dir, &dotted_target).unwrap();
+        assert!(dotted_result.success);
+        let expected_dotted_path = subfolder.join("backup-2026.10.22.json");
+        assert_eq!(dotted_result.path, Some(expected_dotted_path.to_string_lossy().to_string()));
+        assert!(expected_dotted_path.exists());
+
+        // 5. Edge-case test: existing .JSON uppercase extension should not be duplicated
+        let upper_target = subfolder.join("backup-upper.JSON");
+        let upper_result = write_backup_to_path(&conn, &temp_dir, &upper_target).unwrap();
+        assert!(upper_result.success);
+        assert_eq!(upper_result.path, Some(upper_target.to_string_lossy().to_string()));
+        assert!(upper_target.exists());
+
+        // 6. Edge-case test: specifying an existing directory path must fail gracefully
+        let dir_err = write_backup_to_path(&conn, &temp_dir, &subfolder);
+        assert!(dir_err.is_err());
+        assert!(dir_err.unwrap_err().contains("must be a file, not a directory"));
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

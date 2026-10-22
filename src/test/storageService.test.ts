@@ -633,6 +633,82 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
       urlCreateSpy.mockRestore();
       urlRevokeSpy.mockRestore();
     });
+
+    it('preserves window this context when calling showSaveFilePicker, preventing Illegal invocation', async () => {
+      const mockWritable = {
+        write: vi.fn().mockResolvedValue(undefined),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const mockHandle = {
+        createWritable: vi.fn().mockResolvedValue(mockWritable),
+      };
+
+      // Mock simulates real browser behavior where invoking unbound throws TypeError
+      const showSaveFilePickerMock = vi.fn(function (this: unknown) {
+        if (this !== window) {
+          throw new TypeError("Failed to execute 'showSaveFilePicker' on 'Window': Illegal invocation");
+        }
+        return Promise.resolve(mockHandle);
+      });
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-this-context.json');
+
+      expect(showSaveFilePickerMock).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.cancelled).toBe(false);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('closes writable file stream in finally block even if stream write fails', async () => {
+      const mockWritable = {
+        write: vi.fn().mockRejectedValue(new Error('Write stream disk error')),
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+      const mockHandle = {
+        createWritable: vi.fn().mockResolvedValue(mockWritable),
+      };
+      const showSaveFilePickerMock = vi.fn().mockResolvedValue(mockHandle);
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const urlCreateSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
+      const urlRevokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-stream-error.json');
+
+      expect(mockWritable.write).toHaveBeenCalledTimes(1);
+      expect(mockWritable.close).toHaveBeenCalledTimes(1);
+      // Fell back to download link
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+
+      clickSpy.mockRestore();
+      urlCreateSpy.mockRestore();
+      urlRevokeSpy.mockRestore();
+      vi.unstubAllGlobals();
+    });
+
+    it('gracefully handles non-Error DOMException-like objects with AbortError name', async () => {
+      const abortLike = { name: 'AbortError', message: 'User dismissed dialog' };
+      const showSaveFilePickerMock = vi.fn().mockRejectedValue(abortLike);
+      vi.stubGlobal('showSaveFilePicker', showSaveFilePickerMock);
+
+      const result = await exportDatabaseWeb(dummyBackup, 'test-abort-like.json');
+
+      expect(result.success).toBe(false);
+      expect(result.cancelled).toBe(true);
+
+      vi.unstubAllGlobals();
+    });
+
+    it('rejects exportDatabaseToPath when invoked on WebIndexedDBPaymentService', async () => {
+      const service = getPaymentService();
+      await expect(service.exportDatabaseToPath!('some/path.json')).rejects.toThrow(
+        /not supported in desktop|only supported in desktop/i
+      );
+    });
   });
 });
 

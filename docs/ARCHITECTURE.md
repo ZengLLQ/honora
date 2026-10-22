@@ -86,6 +86,8 @@ export interface IPaymentService {
   optimizeReceipt(file: File): Promise<OptimizationResult>;
   getReceiptDataUrl(record: PaymentRecord): Promise<string>;
   exportDatabase(): Promise<DatabaseBackup>;
+  exportDatabaseWithDialog?(defaultFilename?: string): Promise<ExportResult>;
+  exportDatabaseToPath?(targetPath: string): Promise<ExportResult>;
   importDatabase(backup: DatabaseBackup, mode: ImportMode): Promise<ImportResult>;
 }
 ```
@@ -286,11 +288,12 @@ The test suite validates both native Rust engine primitives and React client com
 | **Rust Image Tests** | `src-tauri/src/image_optimizer.rs` | 10 | Magic bytes, downscale math, JPEG/PNG/WebP encoders, EXIF rotation, large image handling |
 | **Rust DB Tests** | `src-tauri/src/db.rs` | 6 | SQLite migrations, status filtering, CRUD, case-insensitive search, date range filtering, export/import transactions |
 | **Rust Storage Tests** | `src-tauri/src/storage.rs` | 3 | Filesystem receipts lifecycle, path traversal prevention, cross-prefix resolution, clear all |
-| **Rust Command Tests** | `src-tauri/src/commands.rs` | 5 | Backup serialization, corrupt data rejection, web bare-id resolution, roundtrip verification |
+| **Rust Command Tests** | `src-tauri/src/commands.rs` | 9 | Backup serialization, corrupt data rejection, web bare-id resolution, roundtrip verification, custom location, dotted filenames, directory rejection |
 | **Formatters Unit Tests** | `src/test/formatters.test.ts` | 10 | Indonesian Rupiah formatting (`formatIDR`), integer parsing, byte formatting |
 | **Compression Tests** | `src/test/imageCompression.test.ts` | 8 | Magic byte identification, dimension calculation, aspect ratio bounds |
-| **Backup Validation Tests**| `src/test/backupValidation.test.ts` | 7 | Backup schema validation, app tag check, date/amount typing, corrupt rejection, status normalization |
-| **Storage Service Tests** | `src/test/storageService.test.ts` | 11 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling, status toggle, export, merge/replace import, desktop cross-compatibility |
-| **Component UI Tests** | `src/test/components.test.tsx` | 47 | Header with Export/Import, ImportConfirmModal, Summary 3-metrics, FilterBar, RecordItem, Modals, Status toggle, Zero-student state |
-| **Total Automated Tests** | — | **107** | **100% Passing** |
+| **Backup Validation Tests**| `src/test/backupValidation.test.ts` | 10 | Backup schema validation, app tag check, date/amount typing, corrupt rejection, status normalization |
+| **Theme System Tests** | `src/test/theme.test.tsx` | 15 | Light/dark theme toggling, persistence, brand color token consistency |
+| **Storage Service Tests** | `src/test/storageService.test.ts` | 22 | IndexedDB lifecycle, CRUD persistence, binary receipt blob handling, status toggle, export, merge/replace import, desktop cross-compatibility, File System Access API, Illegal invocation prevention, AbortError handling, stream disposal |
+| **Component UI Tests** | `src/test/components.test.tsx` | 55 | Header with Export/Import, ImportConfirmModal, Summary 3-metrics, FilterBar, RecordItem, Modals, Status toggle, Zero-student state, Export confirmation and failure toasts |
+| **Total Automated Tests** | — | **148** | **100% Passing** |
 

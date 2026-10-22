@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
 import type { DatabaseBackup, ExportResult, ImportMode, PaymentRecord, PaymentSummary, RecordFilter } from './types/payment';
-import { exportDatabaseWeb, getPaymentService, isTauriEnvironment } from './services/storageService';
+import { exportDatabaseWeb, getPaymentService } from './services/storageService';
 import { validateBackupData } from './services/backupValidation';
 import { getAvailableMonths } from './utils/formatters';
 import { useTheme } from './utils/theme';
@@ -149,9 +149,7 @@ export function App() {
       const defaultFilename = `honora-backup-${dateStr}.json`;
 
       let result: ExportResult;
-      if (isTauriEnvironment() && service.exportDatabaseWithDialog) {
-        result = await service.exportDatabaseWithDialog(defaultFilename);
-      } else if (service.exportDatabaseWithDialog) {
+      if (service.exportDatabaseWithDialog) {
         result = await service.exportDatabaseWithDialog(defaultFilename);
       } else {
         const backup = await service.exportDatabase();
@@ -165,6 +163,8 @@ export function App() {
 
       if (result.success) {
         showFeedback('success', 'Database exported successfully');
+      } else {
+        showFeedback('error', 'Failed to export database backup.');
       }
     } catch (err) {
       console.error('Export failed:', err);

@@ -699,6 +699,10 @@ class WebIndexedDBPaymentService implements IPaymentService {
     return exportDatabaseWeb(backup, filename);
   }
 
+  async exportDatabaseToPath(_targetPath: string): Promise<ExportResult> {
+    throw new Error('exportDatabaseToPath is only supported in desktop (Tauri) environment');
+  }
+
   async importDatabase(
     backup: DatabaseBackup,
     mode: ImportMode
@@ -830,13 +834,13 @@ export async function exportDatabaseWeb(
     typeof (window as unknown as { showSaveFilePicker: unknown }).showSaveFilePicker === 'function'
   ) {
     try {
-      const picker = (
-        window as unknown as {
-          showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
-        }
-      ).showSaveFilePicker;
+      const windowWithPicker = window as unknown as {
+        showSaveFilePicker: (opts: unknown) => Promise<FileSystemFileHandle>;
+      };
 
-      const handle = await picker({
+      // Must call directly as a method on window to preserve `this === window`,
+      // otherwise browsers throw TypeError: Illegal invocation
+      const handle = await windowWithPicker.showSaveFilePicker({
         suggestedName: defaultFilename,
         types: [
           {
@@ -847,9 +851,13 @@ export async function exportDatabaseWeb(
           },
         ],
       });
+
       const writable = await handle.createWritable();
-      await writable.write(jsonString);
-      await writable.close();
+      try {
+        await writable.write(jsonString);
+      } finally {
+        await writable.close();
+      }
 
       return {
         success: true,
@@ -859,7 +867,11 @@ export async function exportDatabaseWeb(
       };
     } catch (err: unknown) {
       // User cancelled the file picker dialog
-      if (err instanceof Error && err.name === 'AbortError') {
+      const isAbort =
+        (err instanceof Error && err.name === 'AbortError') ||
+        (typeof err === 'object' && err !== null && (err as { name?: string }).name === 'AbortError');
+
+      if (isAbort) {
         return {
           success: false,
           cancelled: true,
@@ -882,10 +894,17 @@ export async function exportDatabaseWeb(
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    return {
+      success: true,
+      cancelled: false,
+      records_count: backup.records.length,
+      receipts_count: backup.receipts?.length ?? 0,
+    };
   }
 
   return {
-    success: true,
+    success: false,
     cancelled: false,
     records_count: backup.records.length,
     receipts_count: backup.receipts?.length ?? 0,
