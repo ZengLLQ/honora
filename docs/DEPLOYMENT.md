@@ -144,12 +144,12 @@ npm run tauri build
 ```
 
 This compiles the optimized Rust binary and packages the Windows setup installer:
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.2.0_x64-setup.exe`
-- **MSI Installer (Optional)**: `src-tauri/target/release/bundle/msi/Honora_1.2.0_x64_en-US.msi`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.2.1_x64-setup.exe`
+- **MSI Installer (Optional)**: `src-tauri/target/release/bundle/msi/Honora_1.2.1_x64_en-US.msi`
 - **Standalone Binary**: `src-tauri/target/release/honora.exe`
 
 ### Windows Installation Steps
-1. Double-click `Honora_1.2.0_x64-setup.exe`.
+1. Double-click `Honora_1.2.1_x64-setup.exe`.
 2. Follow the NSIS setup wizard (installs to user application data with start menu shortcut and desktop icon).
 3. The app is immediately ready to use offline.
 4. Local SQLite database and compressed receipt images are stored safely at:
@@ -176,11 +176,11 @@ npm run tauri build -- --target universal-apple-darwin
 ```
 
 Generated bundles:
-- **macOS Disk Image (DMG)**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.2.0_universal.dmg`
+- **macOS Disk Image (DMG)**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.2.1_universal.dmg`
 - **macOS Application Bundle**: `src-tauri/target/universal-apple-darwin/release/bundle/macos/Honora.app`
 
 ### macOS Installation Steps
-1. Double-click `Honora_1.2.0_universal.dmg`.
+1. Double-click `Honora_1.2.1_universal.dmg`.
 2. Drag **Honora** into the `/Applications` shortcut folder.
 3. Open the application from Launchpad or `/Applications`.
 4. *(If opening an unsigned developer binary on macOS Gatekeeper)*:
@@ -200,7 +200,7 @@ Generated bundles:
 Because native macOS binary linking and code signing require Apple Darwin SDK / macOS runners, the project includes an automated GitHub Actions matrix workflow (`.github/workflows/release.yml`):
 
 - **Triggers**:
-   - Pushing a version tag: `git tag v1.2.0 && git push origin v1.2.0`
+   - Pushing a version tag: `git tag v1.2.1 && git push origin v1.2.1`
    - Push to `master` branch
 
   - Manual trigger via **Actions → Release Desktop Apps → Run workflow** (specifying custom tag)

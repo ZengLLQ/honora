@@ -1050,7 +1050,7 @@ describe('UI Components', () => {
 
   describe('ImportConfirmModal component', () => {
     const sampleBackup: DatabaseBackup = {
-      version: '1.2.0',
+      version: '1.2.1',
       schema_version: 1,
       app: 'Honora',
       exported_at: '2026-10-22T08:00:00Z',
@@ -1076,7 +1076,7 @@ describe('UI Components', () => {
       );
 
       expect(screen.getByText('IMPORT DATABASE BACKUP')).toBeInTheDocument();
-      expect(screen.getByText(/ARCHIVE: Honora v1.2.0/i)).toBeInTheDocument();
+      expect(screen.getByText(/ARCHIVE: Honora v1.2.1/i)).toBeInTheDocument();
       expect(screen.getByText('Merge with Existing Data')).toBeInTheDocument();
       expect(screen.getByText('Clean Replace (Full Restore)')).toBeInTheDocument();
 

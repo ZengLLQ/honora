@@ -14,10 +14,10 @@ Download the official desktop application with offline SQLite database, receipt 
 
 | Platform | Format | Download Link | Architecture |
 |---|---|---|---|
-| **macOS** | `.dmg` | [Honora_1.2.0_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.2.0/Honora_1.2.0_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
-| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.2.0/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
-| **Windows** | `.exe` (Setup) | [Honora_1.2.0_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.2.0/Honora_1.2.0_x64-setup.exe) | Windows 10 / 11 (64-bit) |
-| **Windows** | `.msi` | [Honora_1.2.0_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.2.0/Honora_1.2.0_x64_en-US.msi) | Windows MSI Package |
+| **macOS** | `.dmg` | [Honora_1.2.1_universal.dmg](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_1.2.1_universal.dmg) | Apple Silicon (M1/M2/M3/M4) & Intel x86_64 |
+| **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
+| **Windows** | `.exe` (Setup) | [Honora_1.2.1_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_1.2.1_x64-setup.exe) | Windows 10 / 11 (64-bit) |
+| **Windows** | `.msi` | [Honora_1.2.1_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_1.2.1_x64_en-US.msi) | Windows MSI Package |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 
@@ -32,6 +32,8 @@ All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system 
 
 ## 1. Key Features
 
+- **Minimalist Window & Document Title (v1.2.1)**:
+  - Streamlined browser and native window head title directly to **Honora** for clean, distraction-free browser tabs and taskbar representation.
 - **Custom Save Location on Export (v1.2.0)**:
   - When clicking **EXPORT**, users can choose their exact save destination and custom filename rather than dumping the backup into the default Downloads directory.
   - **Desktop Target (Tauri)**: Native OS "Save As" file dialog (via Tauri IPC and `rfd`) allowing selection of any folder (Desktop, Documents, external drive) and custom filename, written safely to disk by the Rust backend.
@@ -164,7 +166,7 @@ Build local Windows installer setup:
 ```bash
 npm run tauri build
 ```
-- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.2.0_x64-setup.exe`
+- **NSIS Setup Installer**: `src-tauri/target/release/bundle/nsis/Honora_1.2.1_x64-setup.exe`
 - **Installation**: Run setup wizard to install with desktop shortcut and start menu entry.
 - **Storage**: Data and compressed receipts are stored offline in `%APPDATA%\com.honora.desktop\`.
 
@@ -173,7 +175,7 @@ Build Universal macOS installer (Apple Silicon + Intel):
 ```bash
 npm run tauri build -- --target universal-apple-darwin
 ```
-- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.2.0_universal.dmg`
+- **DMG Package**: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Honora_1.2.1_universal.dmg`
 - **Installation**: Open `.dmg` and drag `Honora.app` into `/Applications`.
 - **Storage**: Data and receipts stored in `~/Library/Application Support/com.honora.desktop/`.
 

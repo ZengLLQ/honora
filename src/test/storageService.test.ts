@@ -280,7 +280,7 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
     const backup = await service.exportDatabase();
     expect(backup.app).toBe('Honora');
     expect(backup.schema_version).toBe(1);
-    expect(backup.version).toBe('1.2.0');
+    expect(backup.version).toBe('1.2.1');
     expect(backup.records.length).toBe(1);
     expect(backup.records[0].student_name).toBe('Jessica Tan');
     expect(backup.students.length).toBe(1);
@@ -505,7 +505,7 @@ describe('WebIndexedDBPaymentService Integration Tests', () => {
   describe('Custom Save Location Export Tests', () => {
     const dummyBackup: DatabaseBackup = {
       app: 'Honora',
-      version: '1.2.0',
+      version: '1.2.1',
       schema_version: 1,
       exported_at: '2026-10-22T08:00:00Z',
       records: [
