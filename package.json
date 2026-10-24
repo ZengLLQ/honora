@@ -13,6 +13,7 @@
     "tauri:android:build": "tauri android build --apk",
     "tauri:android:build:aarch64": "tauri android build --apk --target aarch64",
     "tauri:android:build:all": "tauri android build --apk",
+    "icons:android": "node scripts/generate_android_icons.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
