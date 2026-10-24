@@ -166,13 +166,14 @@ function generateForeground(size) {
   return createPng(size, size, buf);
 }
 
-// Generate Legacy Square Launcher Icon (48dp canvas, rounded rect with 44dp emblem)
+// Generate Legacy Square Launcher Icon (48dp canvas, 44dp white rounded card, 32dp centered emblem preserving sharp corner brackets)
 function generateLauncher(size) {
   const buf = Buffer.alloc(size * size * 4, 0);
-  const emblemSize = Math.round((44 / 48) * size);
-  const offsetX = (size - emblemSize) / 2;
-  const offsetY = (size - emblemSize) / 2;
+  const cardSize = Math.round((44 / 48) * size);
+  const cardOffset = (size - cardSize) / 2;
   const cornerRadius = (6 / 48) * size;
+  const emblemSize = Math.round((32 / 48) * size);
+  const emblemOffset = (size - emblemSize) / 2;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -182,14 +183,13 @@ function generateLauncher(size) {
           const px = x + (sx + 0.5) / 2;
           const py = y + (sy + 0.5) / 2;
 
-          // Check rounded rect clip for the card
+          // Check rounded rect clip for the white card
           let inside = true;
-          const minX = offsetX, maxX = offsetX + emblemSize;
-          const minY = offsetY, maxY = offsetY + emblemSize;
+          const minX = cardOffset, maxX = cardOffset + cardSize;
+          const minY = cardOffset, maxY = cardOffset + cardSize;
           if (px < minX || px > maxX || py < minY || py > maxY) {
             inside = false;
           } else {
-            // Check 4 corners
             const checkCorner = (cx, cy) => {
               const dx = px - cx, dy = py - cy;
               return dx * dx + dy * dy <= cornerRadius * cornerRadius;
@@ -206,13 +206,25 @@ function generateLauncher(size) {
           }
 
           if (inside) {
-            const u = (px - offsetX) / emblemSize;
-            const v = (py - offsetY) / emblemSize;
-            const [pr, pg, pb, pa] = sampleEmblem(u, v);
-            r += pr * (pa / 255);
-            g += pg * (pa / 255);
-            b += pb * (pa / 255);
-            a += pa;
+            // Base white card color
+            let cr = 255, cg = 255, cb = 255;
+            let ca = 255;
+
+            // Overlay emblem if within emblem bounds
+            const u = (px - emblemOffset) / emblemSize;
+            const v = (py - emblemOffset) / emblemSize;
+            if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+              const [er, eg, eb, ea] = sampleEmblem(u, v);
+              const alpha = ea / 255;
+              cr = Math.round(er * alpha + cr * (1 - alpha));
+              cg = Math.round(eg * alpha + cg * (1 - alpha));
+              cb = Math.round(eb * alpha + cb * (1 - alpha));
+            }
+
+            r += cr * (ca / 255);
+            g += cg * (ca / 255);
+            b += cb * (ca / 255);
+            a += ca;
           }
         }
       }
