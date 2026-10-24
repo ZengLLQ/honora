@@ -120,7 +120,7 @@ jobs:
       - name: Install Android NDK & SDK components
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager --install "ndk;27.0.12077973" "platforms;android-37.0" "platforms;android-35" "platforms;android-34" "build-tools;37.0.0" "build-tools;34.0.0" || true
+          sdkmanager --install "ndk;27.0.12077973" "platforms;android-36" "platforms;android-35" "platforms;android-34" "build-tools;36.0.0" "build-tools;35.0.0" "build-tools;34.0.0" || true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -149,7 +149,8 @@ jobs:
         run: |
           mkdir -p release-apk
           find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" -exec cp {} release-apk/honora-android-release.apk \;
-          cp release-apk/honora-android-release.apk release-apk/honora-v1.2.1-android.apk || true
+          RELEASE_TAG="${{ github.event.inputs.release_tag || github.ref_name }}"
+          cp release-apk/honora-android-release.apk "release-apk/honora-${RELEASE_TAG}-android.apk" || true
 
       - name: Upload Android Artifact
         uses: actions/upload-artifact@v4

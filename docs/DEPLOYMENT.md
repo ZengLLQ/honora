@@ -200,8 +200,8 @@ Generated bundles:
 Honora compiles directly to native Android APK packages using Tauri 2 Mobile, Android Gradle Plugin, and Rust's Android cross-compilation targets (`aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`, `i686-linux-android`).
 
 ### Prerequisites
-- **Java Development Kit (JDK)**: OpenJDK 21 (Temurin or Amazon Corretto).
-- **Android SDK & Command-line Tools**: Android API Level 34+ (compileSdk 37 / minSdk 24).
+- **Java Development Kit (JDK)**: OpenJDK 21 (Temurin or Amazon Corretto) or JDK 17.
+- **Android SDK & Command-line Tools**: Android API Level 36 (compileSdk 36 / targetSdk 36 / minSdk 24).
 - **Android NDK**: NDK 27.x (`27.0.12077973` recommended).
 - **Rust Android Targets**:
   ```bash
@@ -214,6 +214,9 @@ Ensure `ANDROID_HOME` and `NDK_HOME` point to your Android SDK and NDK installat
 # Windows PowerShell
 $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 $env:NDK_HOME = "$env:ANDROID_HOME\ndk\27.0.12077973"
+
+# If multiple Rust toolchains or a standalone Rust installation exists on Windows:
+$env:RUSTC = (rustup which rustc)
 
 # Linux / macOS
 export ANDROID_HOME=$HOME/Android/Sdk
@@ -268,7 +271,7 @@ The project includes an automated GitHub Actions matrix workflow (`.github/workf
 - **Matrix & Specialized Runners**:
   - `windows-latest`: Builds Windows NSIS setup `.exe` & `.msi`
   - `macos-latest`: Builds macOS Universal `.dmg` & `.app` for both Apple Silicon (`arm64`) and Intel (`x86_64`)
-  - `ubuntu-22.04` (`build-android`): Sets up JDK 21, Android SDK (API 34/35/37), NDK 27, and Rust Android targets to assemble release `.apk` installers
+  - `ubuntu-22.04` (`build-android`): Sets up JDK 21, Android SDK (API 34/35/36), NDK 27, and Rust Android targets to assemble release `.apk` installers
 - **Artifacts & Releases**:
   - Automatically publishes a GitHub Release with attached Windows installers, macOS disk images, and Android `.apk` package
   - Uploads all build artifacts to workflow run summary for immediate download
