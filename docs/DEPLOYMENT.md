@@ -195,33 +195,95 @@ Generated bundles:
 
 ---
 
-## 6. Automated Multi-Platform CI/CD (.github/workflows/release.yml)
+## 6. Android APK Installer (`.apk`) Compilation & Installation
 
-Because native macOS binary linking and code signing require Apple Darwin SDK / macOS runners, the project includes an automated GitHub Actions matrix workflow (`.github/workflows/release.yml`):
+Honora compiles directly to native Android APK packages using Tauri 2 Mobile, Android Gradle Plugin, and Rust's Android cross-compilation targets (`aarch64-linux-android`, `armv7-linux-androideabi`, `x86_64-linux-android`, `i686-linux-android`).
 
-- **Triggers**:
-   - Pushing a version tag: `git tag v1.2.1 && git push origin v1.2.1`
-   - Push to `master` branch
+### Prerequisites
+- **Java Development Kit (JDK)**: OpenJDK 21 (Temurin or Amazon Corretto).
+- **Android SDK & Command-line Tools**: Android API Level 34+ (compileSdk 37 / minSdk 24).
+- **Android NDK**: NDK 27.x (`27.0.12077973` recommended).
+- **Rust Android Targets**:
+  ```bash
+  rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+  ```
 
-  - Manual trigger via **Actions → Release Desktop Apps → Run workflow** (specifying custom tag)
-- **Matrix Runners**:
-  - `windows-latest`: Builds Windows NSIS setup `.exe` & `.msi`
-  - `macos-latest`: Builds macOS Universal `.dmg` & `.app` for both Apple Silicon (`arm64`) and Intel (`x86_64`)
-- **Artifacts**:
-  - Automatically publishes a GitHub Release with attached installer binaries
-  - Uploads build artifacts to workflow run summary for immediate download
+### Environment Variables
+Ensure `ANDROID_HOME` and `NDK_HOME` point to your Android SDK and NDK installations:
+```bash
+# Windows PowerShell
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:NDK_HOME = "$env:ANDROID_HOME\ndk\27.0.12077973"
+
+# Linux / macOS
+export ANDROID_HOME=$HOME/Android/Sdk
+export NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973
+```
+
+### Initializing and Building the APK
+```bash
+# 1. Initialize Android Studio project template (if setting up fresh clone)
+npm run tauri:android:init   # or: npm run tauri android init
+
+# 2. Build Release APK for ARM64 devices (recommended default for modern Android phones)
+npm run tauri:android:build:aarch64
+
+# 3. Build Universal / Multi-ABI APK
+npm run tauri:android:build
+```
+
+The compiled release `.apk` is generated at:
+```
+src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk
+```
+
+### Android Permissions & Storage
+The application includes permissions configured in `AndroidManifest.xml`:
+- `INTERNET`: For secure IPC and network fetch capabilities.
+- `READ_MEDIA_IMAGES` & `READ_EXTERNAL_STORAGE`: To select receipt photos from the gallery.
+- `WRITE_EXTERNAL_STORAGE`: To write database backups to external storage (API ≤ 28).
+- `CAMERA`: Optional camera hardware access to capture receipts directly.
+- `FileProvider`: Secure file sharing for exported JSON backups.
+
+### Android Installation Steps
+1. Transfer `app-universal-release.apk` (or `honora-v1.2.1-android.apk`) to your Android device via USB or direct download link.
+2. Tap the APK file in your device's file manager or browser downloads.
+3. Allow "Install unknown apps" if prompted by Android.
+4. Tap **Install** and open **Honora**.
+5. Local SQLite database and compressed receipts are stored in the app's sandboxed private storage:
+   ```
+   /data/data/com.honora.desktop/files/
+   ```
 
 ---
 
-## 7. Verification & Health Check Checklist
+## 7. Automated Multi-Platform CI/CD (.github/workflows/release.yml)
+
+The project includes an automated GitHub Actions matrix workflow (`.github/workflows/release.yml`) that builds and releases desktop and mobile packages:
+
+- **Triggers**:
+  - Pushing a version tag: `git tag v1.2.1 && git push origin v1.2.1`
+  - Push to `master` branch
+  - Manual trigger via **Actions → Release Desktop & Mobile Apps → Run workflow** (specifying custom tag)
+- **Matrix & Specialized Runners**:
+  - `windows-latest`: Builds Windows NSIS setup `.exe` & `.msi`
+  - `macos-latest`: Builds macOS Universal `.dmg` & `.app` for both Apple Silicon (`arm64`) and Intel (`x86_64`)
+  - `ubuntu-22.04` (`build-android`): Sets up JDK 21, Android SDK (API 34/35/37), NDK 27, and Rust Android targets to assemble release `.apk` installers
+- **Artifacts & Releases**:
+  - Automatically publishes a GitHub Release with attached Windows installers, macOS disk images, and Android `.apk` package
+  - Uploads all build artifacts to workflow run summary for immediate download
+
+---
+
+## 8. Verification & Health Check Checklist
 
 Before deploying updates or releasing binaries, run the full verification pipeline:
 
 ```bash
-# 1. Run all frontend Vitest unit and integration tests (107 tests)
+# 1. Run all frontend Vitest unit and integration tests (120 tests)
 npm test
 
-# 2. Run all Rust backend unit tests (27 tests)
+# 2. Run all Rust backend unit tests (28 tests)
 cargo test --manifest-path src-tauri/Cargo.toml
 
 # 3. Run zero-warning static analysis
@@ -229,4 +291,7 @@ npm run lint
 
 # 4. Verify TypeScript compilation & Vite bundle creation
 npm run build
+
+# 5. Build Android Release APK
+npm run tauri:android:build:aarch64
 ```

@@ -18,6 +18,7 @@ Download the official desktop application with offline SQLite database, receipt 
 | **macOS** | `.app.tar.gz` | [Honora_universal.app.tar.gz](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_universal.app.tar.gz) | Apple Silicon & Intel Universal Bundle |
 | **Windows** | `.exe` (Setup) | [Honora_1.2.1_x64-setup.exe](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_1.2.1_x64-setup.exe) | Windows 10 / 11 (64-bit) |
 | **Windows** | `.msi` | [Honora_1.2.1_x64_en-US.msi](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/Honora_1.2.1_x64_en-US.msi) | Windows MSI Package |
+| **Android** | `.apk` (Installer) | [honora-v1.2.1-android.apk](https://github.com/ZengLLQ/honora/releases/download/v1.2.1/honora-v1.2.1-android.apk) | ARM64 / Universal Android (API 24+) |
 
 All installers include the full brand logo suite (`.ico`, `.icns`, PNG), system tray integration, and native high-DPI scaling.
 

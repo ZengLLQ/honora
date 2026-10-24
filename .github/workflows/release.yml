@@ -1,4 +1,4 @@
-name: Release Desktop Apps
+name: Release Desktop & Mobile Apps
 
 on:
   push:
@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release Tag (e.g. v0.1.0)'
+        description: 'Release Tag (e.g. v1.2.1)'
         required: false
-        default: 'v0.1.0'
+        default: 'v1.2.1'
 
 permissions:
   contents: write
@@ -72,13 +72,14 @@ jobs:
           tagName: v__VERSION__
           releaseName: 'Honora v__VERSION__'
           releaseBody: |
-            ## Honora Desktop Release
+            ## Honora Release
 
-            Official multi-platform desktop release of Honora — offline-first private tutor payment ledger and bank transfer receipt archive with automatic image compression.
+            Official multi-platform release of Honora — offline-first private tutor payment ledger and bank transfer receipt archive with automatic image compression.
 
             ### Downloads:
             - **macOS**: `.dmg` (Universal Apple Silicon & Intel) & `.app`
             - **Windows**: `.exe` (NSIS Setup Installer) & `.msi` (Windows Installer)
+            - **Android**: `.apk` (Universal / ARM64 APK Installer)
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
@@ -91,3 +92,78 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/
             src-tauri/target/release/bundle/
           if-no-files-found: warn
+
+  build-android:
+    needs: build-tauri
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK & SDK components
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "ndk;27.0.12077973" "platforms;android-37.0" "platforms;android-35" "platforms;android-34" "build-tools;37.0.0" "build-tools;34.0.0" || true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: 'aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android'
+
+      - name: Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Ensure Gradlew is executable
+        run: chmod +x src-tauri/gen/android/gradlew
+
+      - name: Build Android Release APK
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: |
+          npx tauri android build --apk --target aarch64
+
+      - name: Prepare Release APK Artifact
+        run: |
+          mkdir -p release-apk
+          find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" -exec cp {} release-apk/honora-android-release.apk \;
+          cp release-apk/honora-android-release.apk release-apk/honora-v1.2.1-android.apk || true
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: honora-android
+          path: release-apk/*.apk
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          files: release-apk/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

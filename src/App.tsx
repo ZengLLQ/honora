@@ -236,7 +236,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-heron-bg text-heron-primary selection:bg-heron-brand selection:text-white font-sans">
+    <div className="flex flex-col min-h-screen font-sans bg-heron-bg text-heron-primary selection:bg-heron-brand selection:text-white">
       {/* Top Application Header */}
       <Header
         isTauri={service.isTauri}
@@ -261,9 +261,9 @@ export function App() {
 
 
       {/* Main Page Area 1: Distinctive Heading & Primary Action */}
-      <section className="border-b border-heron-border bg-heron-bg pt-8 sm:pt-12 pb-6">
-        <div className="max-w-page mx-auto px-6 lg:px-12">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <section className="pt-8 pb-6 border-b border-heron-border bg-heron-bg sm:pt-12">
+        <div className="px-6 mx-auto max-w-page lg:px-12">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-2 h-2 bg-heron-brand" />
@@ -271,7 +271,7 @@ export function App() {
                   HONORA · FINANCIAL LEDGER
                 </span>
               </div>
-              <h1 className="font-display font-bold text-3xl sm:text-5xl lg:text-6xl text-heron-primary tracking-tight uppercase leading-none">
+              <h1 className="text-3xl font-bold leading-none tracking-tight uppercase font-display sm:text-5xl lg:text-6xl text-heron-primary">
                 PAYMENT RECORDS
               </h1>
             </div>
@@ -279,7 +279,7 @@ export function App() {
             <button
               onClick={handleOpenNewPayment}
               aria-label="ADD PAYMENT"
-              className="btn-heron inline-flex items-center justify-center gap-2 bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover text-white text-xs font-sans font-semibold tracking-wider uppercase px-5 py-3 border border-heron-primary hover:border-heron-brand dark:border-heron-brand transition-all duration-200 cursor-pointer shadow-sm self-start sm:self-auto"
+              className="inline-flex items-center self-start justify-center gap-2 px-5 py-3 font-sans text-xs font-semibold tracking-wider text-white uppercase transition-all duration-200 border shadow-sm cursor-pointer btn-heron bg-heron-primary hover:bg-heron-brand dark:bg-heron-brand dark:hover:bg-heron-brand-hover border-heron-primary hover:border-heron-brand dark:border-heron-brand sm:self-auto"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>ADD PAYMENT</span>
@@ -315,15 +315,15 @@ export function App() {
       </main>
 
       {/* Footer & Attribution (Section 12) */}
-      <footer className="border-t border-heron-border bg-heron-surface/60 py-6 transition-colors">
-        <div className="max-w-page mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-heron-tertiary font-sans">
+      <footer className="py-6 transition-colors border-t border-heron-border bg-heron-surface/60">
+        <div className="flex flex-col items-center justify-between gap-3 px-6 mx-auto text-xs max-w-page lg:px-12 sm:flex-row">
+          <div className="flex items-center gap-2 font-sans text-heron-tertiary">
             <span className="w-1.5 h-1.5 bg-heron-brand" />
-            <span className="tracking-wider uppercase font-medium">TUTOR PAYMENT RECORDS</span>
+            <span className="font-medium tracking-wider uppercase">TUTOR PAYMENT RECORDS</span>
           </div>
 
           <div
-            className="text-heron-secondary font-sans tracking-normal"
+            className="font-sans tracking-normal text-heron-secondary"
             style={{ fontFamily: '"BT Grotesk", "Noto Sans SC", "Microsoft YaHei", "PingFang SC", sans-serif' }}
           >
             Made by JAYCEE 曾令强
@@ -386,7 +386,7 @@ export function App() {
           ) : (
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
           )}
-          <span className="font-medium flex-1">
+          <span className="flex-1 font-medium">
             {feedback.message}
           </span>
           <button

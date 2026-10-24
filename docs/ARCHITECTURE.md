@@ -53,14 +53,14 @@ The application is structured into decoupled UI, domain service, and platform-sp
                │                                   │
                ▼                                   ▼
 ┌───────────────────────────────┐ ┌──────────────────────────────────────┐
-│     TAURI 2 (DESKTOP TIER)    │ │        WEB CLIENT TIER               │
+│  TAURI 2 (DESKTOP & ANDROID)  │ │        WEB CLIENT TIER               │
 │                               │ │                                      │
 │ • IPC Invoke Bridge           │ │ • HTML5 Canvas Compressor            │
 │ • Rust Backend Engine         │ │ • IndexedDB (HonoraDB)               │
 │ • rusqlite Embedded SQLite    │ │   ├── STORE: payment_records         │
 │ • image-rs Image Optimization │ │   └── STORE: receipt_blobs           │
-│ • OS Local Filesystem Archive │ │ • Zero-leakage client sandbox        │
-│                               │ │ • Vercel Static Hosting (Edge CDN)   │
+│ • Sandboxed Filesystem / App  │ │ • Zero-leakage client sandbox        │
+│ • Windows, macOS, Android APK │ │ • Vercel Static Hosting (Edge CDN)   │
 └───────────────────────────────┘ └──────────────────────────────────────┘
 ```
 

@@ -8,6 +8,11 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "tauri": "tauri",
+    "tauri:android:init": "tauri android init",
+    "tauri:android:dev": "tauri android dev",
+    "tauri:android:build": "tauri android build --apk",
+    "tauri:android:build:aarch64": "tauri android build --apk --target aarch64",
+    "tauri:android:build:all": "tauri android build --apk",
     "lint": "oxlint",
     "preview": "vite preview"
   },

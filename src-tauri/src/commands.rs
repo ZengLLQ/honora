@@ -621,6 +621,7 @@ pub async fn export_database_with_dialog(
         filename = format!("{}.json", filename);
     }
 
+    #[cfg(not(target_os = "android"))]
     let chosen_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
             .set_file_name(&filename)
@@ -629,6 +630,9 @@ pub async fn export_database_with_dialog(
     })
     .await
     .map_err(|e| format!("Dialog thread error: {}", e))?;
+
+    #[cfg(target_os = "android")]
+    let chosen_path = Some(state.app_data_dir.join(&filename));
 
     match chosen_path {
         Some(path) => {
